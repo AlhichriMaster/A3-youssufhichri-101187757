@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quest Game</title>
+    <style>
+        .player { margin: 20px; padding: 10px; border: 1px solid #ccc; }
+        .current-player { background-color: #e6ffe6; }
+        .card { display: inline-block; margin: 5px; padding: 5px; border: 1px solid #999; }
+        .deck { margin: 20px; padding: 10px; border: 2px dashed #666; }
+        #game-controls { margin: 20px; }
+        .button { padding: 10px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <div id="game-controls">
+        <button onclick="startGame()" class="button">Start Game</button>
+        <button onclick="playTurn()" class="button">Play Turn</button>
+    </div>
+    
+    <div id="game-status"></div>
+    
+    <div id="current-quest"></div>
+    
+    <div class="deck-info">
+        <div>Adventure Deck: <span id="adventure-deck-count"></span></div>
+        <div>Event Deck: <span id="event-deck-count"></span></div>
+    </div>
+    
+    <div id="players"></div>
+
+    <script>
+        let gameState = {};
+
+        async function startGame() {
+            const response = await fetch('http://localhost:8080/api/game/start', {
+                method: 'POST'
+            });
+            gameState = await response.json();
+            renderGame();
+        }
+
+        async function playTurn() {
+            const response = await fetch('http://localhost:8080/api/game/playTurn', {
+                method: 'POST'
+            });
+            gameState = await response.json();
+            renderGame();
+        }
+
+        function renderGame() {
+            // Game Status
+            document.getElementById('game-status').textContent = `Game Status: ${gameState.gameStatus}`;
+            
+            // Quest
+            const questDiv = document.getElementById('current-quest');
+            questDiv.innerHTML = gameState.currentQuest ? 
+                `Current Quest: ${gameState.currentQuest.name}` : 'No active quest';
+            
+            // Deck counts
+            document.getElementById('adventure-deck-count').textContent = gameState.adventureDeckSize;
+            document.getElementById('event-deck-count').textContent = gameState.eventDeckSize;
+            
+            // Players
+            const playersDiv = document.getElementById('players');
+            playersDiv.innerHTML = gameState.players.map(player => `
+                <div class="player ${player.id === gameState.currentPlayerId ? 'current-player' : ''}">
+                    <h3>Player ${player.id}</h3>
+                    <div>Shields: ${player.shields}</div>
+                    <div>Hand: ${player.hand.map(card => 
+                        `<div class="card">${card.name}</div>`).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Initial load
+        fetch('http://localhost:8080/api/game/state')
+            .then(response => response.json())
+            .then(data => {
+                gameState = data;
+                renderGame();
+            });
+    </script>
+</body>
+</html>

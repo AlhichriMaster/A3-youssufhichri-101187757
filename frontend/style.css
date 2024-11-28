@@ -1,0 +1,22 @@
+.player {
+    margin: 20px;
+    padding: 10px;
+    border: 1px solid #ccc;
+}
+
+.current-player {
+    background-color: #e6ffe6;
+}
+
+.card {
+    display: inline-block;
+    margin: 5px;
+    padding: 5px;
+    border: 1px solid #999;
+}
+
+.deck {
+    margin: 20px;
+    padding: 10px;
+    border: 2px dashed #666;
+}
