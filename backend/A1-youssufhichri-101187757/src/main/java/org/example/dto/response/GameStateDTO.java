@@ -6,6 +6,8 @@ import lombok.Data;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import org.example.dto.enums.GameStatus;
+import org.example.model.EventCard;
+import org.example.model.QuestSponsorshipState;
 
 @Data
 @AllArgsConstructor
@@ -13,8 +15,11 @@ import org.example.dto.enums.GameStatus;
 public class GameStateDTO {
     private List<PlayerDTO> players;
     private String currentPlayerId;
-    private QuestDTO currentQuest;  // Make sure this is QuestDTO, not String
-    private GameStatus status;
-    private Integer adventureDeckSize;
-    private Integer eventDeckSize;
+    private QuestDTO currentQuest;
+    private GameStatus gameStatus;
+    private int adventureDeckSize;
+    private int eventDeckSize;
+    private EventCard pendingQuest;  // Add this
+    private QuestSponsorshipState questSponsorshipState;  // Add this
+    private String currentSponsor;  // Add this
 }

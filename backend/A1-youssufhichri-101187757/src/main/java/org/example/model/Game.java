@@ -22,8 +22,13 @@ public class Game {
     private Quest currentQuest;
     private Deck adventureDiscardPile;
 
+    private String currentSponsor;
+
     private DeckService deckService;
     private PlayerService playerService;
+
+    private EventCard pendingQuest;
+    private QuestSponsorshipState questSponsorshipState;
 
     @Autowired
     public Game(DeckService deckService, PlayerService playerService) {
@@ -53,4 +58,6 @@ public class Game {
     private void initializePlayersHands() {
         playerService.initializeAllPlayersHands(players, adventureDeck);
     }
+
+
 }

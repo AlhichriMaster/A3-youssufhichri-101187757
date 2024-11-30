@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quest Game</title>
+    <style>
+        .player { margin: 20px; padding: 10px; border: 1px solid #ccc; }
+        .current-player { background-color: #e6ffe6; }
+        .card { 
+            display: inline-block; 
+            margin: 5px; 
+            padding: 5px; 
+            border: 1px solid #999; 
+            cursor: pointer;
+        }
+        .card.selected {
+            background-color: #e6ffe6;
+            border: 2px solid green;
+        }
+        .deck { margin: 20px; padding: 10px; border: 2px dashed #666; }
+        #game-controls { margin: 20px; }
+        .button { padding: 10px; margin: 5px; }
+        #sponsorship-prompt, #quest-setup { 
+            border: 1px solid #ccc; 
+            padding: 20px; 
+            margin: 20px; 
+            border-radius: 5px;
+        }
+        .stage-setup {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-controls">
+        <!-- <button onclick="startGame()" class="button">Start Game</button> -->
+        <button onclick="playTurn()" class="button">Play Turn</button>
+    </div>
+    
+    <div id="game-status"></div>
+    
+    <div id="sponsorship-prompt"></div>
+    
+    <div id="quest-setup"></div>
+    
+    <div id="current-quest"></div>
+    
+    <div class="deck-info">
+        <div>Adventure Deck: <span id="adventure-deck-count"></span></div>
+        <div>Event Deck: <span id="event-deck-count"></span></div>
+    </div>
+    
+    <div id="players"></div>
+
+    <script>
+        let gameState = {};
+        let selectedCards = {
+            foe: null,
+            weapons: []
+        };
+        let currentStageSetup = 0;
+
+        async function startGame() {
+            const response = await fetch('http://localhost:8080/api/game/start', {
+                method: 'POST'
+            });
+            gameState = await response.json();
+            renderGame();
+        }
+
+        async function playTurn() {
+            const response = await fetch('http://localhost:8080/api/game/playTurn', {
+                method: 'POST'
+            });
+            gameState = await response.json();
+            renderGame();
+        }
+
+        async function respondToSponsorship(accepting) {
+            const response = await fetch('http://localhost:8080/api/game/respondToSponsorship', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    playerId: gameState.currentPlayerId,
+                    accepting: accepting
+                })
+            });
+            gameState = await response.json();
+            renderGame();
+        }
+
+        async function submitQuestSetup() {
+            const stages = [];
+            const setupDivs = document.querySelectorAll('.stage-setup');
+            
+            for (let stageDiv of setupDivs) {
+                const foeCardId = stageDiv.getAttribute('data-foe');
+                const weaponCardIds = Array.from(stageDiv.querySelectorAll('.weapon-card.selected'))
+                    .map(card => card.getAttribute('data-card-id'));
+                
+                stages.push({
+                    foeCardId: foeCardId,
+                    weaponCardIds: weaponCardIds
+                });
+            }
+
+            const response = await fetch('http://localhost:8080/api/game/setupQuest', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    sponsorId: gameState.currentSponsor,
+                    stages: stages
+                })
+            });
+            gameState = await response.json();
+            renderGame();
+        }
+
+        function selectCard(cardId, cardType, stageIndex) {
+            const card = document.querySelector(`[data-card-id="${cardId}"]`);
+            if (cardType === 'foe') {
+                // Remove previous foe selection for this stage
+                const previousFoe = document.querySelector(`.stage-${stageIndex} .foe-card.selected`);
+                if (previousFoe) {
+                    previousFoe.classList.remove('selected');
+                }
+                card.classList.add('selected');
+                document.querySelector(`.stage-${stageIndex}`).setAttribute('data-foe', cardId);
+            } else if (cardType === 'weapon') {
+                card.classList.toggle('selected');
+            }
+        }
+
+        function renderGame() {
+            // Game Status
+            document.getElementById('game-status').textContent = `Game Status: ${gameState.gameStatus}`;
+            
+            // Sponsorship Prompt
+            const sponsorshipDiv = document.getElementById('sponsorship-prompt');
+            sponsorshipDiv.innerHTML = '';
+            
+            if (gameState.pendingQuest && 
+                gameState.questSponsorshipState && 
+                gameState.questSponsorshipState.currentPlayer === gameState.currentPlayerId) {
+                sponsorshipDiv.innerHTML = `
+                    <h3>Quest Sponsorship</h3>
+                    <p>Would you like to sponsor this quest?</p>
+                    <button onclick="respondToSponsorship(true)" class="button">Accept</button>
+                    <button onclick="respondToSponsorship(false)" class="button">Decline</button>
+                `;
+            }
+
+            // Quest Setup
+            const questSetupDiv = document.getElementById('quest-setup');
+            questSetupDiv.innerHTML = '';
+            
+            if (gameState.pendingQuest && gameState.currentSponsor === gameState.currentPlayerId) {
+                const stages = gameState.pendingQuest.stages;
+                questSetupDiv.innerHTML = `
+                    <h3>Quest Setup</h3>
+                    ${Array(stages).fill(0).map((_, i) => `
+                        <div class="stage-setup stage-${i}" data-foe="">
+                            <h4>Stage ${i + 1}</h4>
+                            <div class="card-selection">
+                                <h5>Select Foe:</h5>
+                                <div class="foe-cards">
+                                    ${renderPlayerFoeCards(i)}
+                                </div>
+                                <h5>Select Weapons:</h5>
+                                <div class="weapon-cards">
+                                    ${renderPlayerWeaponCards(i)}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                    <button onclick="submitQuestSetup()" class="button">Submit Quest Setup</button>
+                `;
+            }
+            
+            // Current Quest
+            const questDiv = document.getElementById('current-quest');
+            questDiv.innerHTML = gameState.currentQuest ? 
+                `Current Quest: ${gameState.currentQuest.name}` : 'No active quest';
+            
+            // Deck counts
+            document.getElementById('adventure-deck-count').textContent = gameState.adventureDeckSize;
+            document.getElementById('event-deck-count').textContent = gameState.eventDeckSize;
+            
+            // Players
+            const playersDiv = document.getElementById('players');
+            playersDiv.innerHTML = gameState.players.map(player => `
+                <div class="player ${player.id === gameState.currentPlayerId ? 'current-player' : ''}">
+                    <h3>Player ${player.id}</h3>
+                    <div>Shields: ${player.shields}</div>
+                    <div>Hand: ${player.hand.map(card => 
+                        `<div class="card">${card.id}</div>`).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderPlayerFoeCards(stageIndex) {
+            return gameState.players
+                .find(p => p.id === gameState.currentPlayerId)
+                .hand
+                .filter(card => card.type === 'FOE')
+                .map(card => `
+                    <div class="card foe-card" 
+                         data-card-id="${card.id}"
+                         onclick="selectCard('${card.id}', 'foe', ${stageIndex})">
+                        ${card.name}
+                    </div>
+                `).join('');
+        }
+
+        function renderPlayerWeaponCards(stageIndex) {
+            return gameState.players
+                .find(p => p.id === gameState.currentPlayerId)
+                .hand
+                .filter(card => card.type === 'WEAPON')
+                .map(card => `
+                    <div class="card weapon-card" 
+                         data-card-id="${card.id}"
+                         onclick="selectCard('${card.id}', 'weapon', ${stageIndex})">
+                        ${card.name}
+                    </div>
+                `).join('');
+        }
+
+        // Initial load
+        fetch('http://localhost:8080/api/game')
+            .then(response => response.json())
+            .then(data => {
+                gameState = data;
+                renderGame();
+            });
+    </script>
+</body>
+</html>

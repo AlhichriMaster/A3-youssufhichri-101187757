@@ -46,7 +46,9 @@ public class GameService {
             eventDeck.refillFromDiscardPile(game.getEventDiscardPile());
         }
         EventCard card = (EventCard) eventDeck.drawCard();
-        handleEventCard(game, card);
+        game.setPendingQuest(card);
+        System.out.println("This is the event card that we pulled: " + card.getId());
+//        handleEventCard(game, card);
         return createGameStateDTO(game);
     }
 
@@ -63,7 +65,13 @@ public class GameService {
                 handleProsperity(game);
                 break;
             case QUEST:
-                questService.handleQuestCard(game, card);
+                // Instead of immediately processing the quest, set it as pending
+                game.setPendingQuest(card);
+                game.setQuestSponsorshipState(new QuestSponsorshipState(
+                        game.getPlayers().stream()
+                                .map(Player::getId)
+                                .collect(Collectors.toList())
+                ));
                 break;
         }
     }
@@ -122,7 +130,10 @@ public class GameService {
                 game.getCurrentQuest() != null ? questService.convertToQuestDTO(game.getCurrentQuest()) : null,
                 isGameOver(game) ? GameStatus.FINISHED : GameStatus.IN_PROGRESS,
                 game.getAdventureDeck().getCards().size(),
-                game.getEventDeck().getCards().size()
+                game.getEventDeck().getCards().size(),
+                game.getPendingQuest(),  // Add these
+                game.getQuestSponsorshipState(),
+                game.getCurrentSponsor()
         );
     }
 }

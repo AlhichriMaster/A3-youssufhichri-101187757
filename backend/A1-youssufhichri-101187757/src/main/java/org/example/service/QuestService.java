@@ -25,27 +25,35 @@ public class QuestService {
     // Update the QuestDTO constructor call
     public QuestDTO handleQuestCard(Game game, EventCard card) {
         int stages = Integer.parseInt(card.getId().substring(1));
-        Quest quest = new Quest(stages);
-        game.setCurrentQuest(quest);
+        List<String> potentialSponsors = game.getPlayers().stream()
+                .filter(player -> canSponsorQuest(player, stages))  // Pass stages instead of Quest
+                .map(Player::getId)
+                .collect(Collectors.toList());
+
+        if (potentialSponsors.isEmpty()) {
+            return null;
+        }
+
+        game.setPendingQuest(card);
+        game.setQuestSponsorshipState(new QuestSponsorshipState(potentialSponsors));
 
         return new QuestDTO(
                 stages,
-                null, // sponsor ID
-                new ArrayList<>(), // stage details
-                findPotentialSponsors(game),
+                null,
+                new ArrayList<>(),
+                potentialSponsors,
                 QuestStatus.AWAITING_SPONSOR
         );
     }
 
-    public List<String> findPotentialSponsors(Game game) {
-        return game.getPlayers().stream()
-                .filter(player -> canSponsorQuest(player, game.getCurrentQuest()))
-                .map(Player::getId)
-                .collect(Collectors.toList());
-    }
+//    public List<String> findPotentialSponsors(Game game) {
+//        return game.getPlayers().stream()
+//                .filter(player -> canSponsorQuest(player, game.getCurrentQuest()))
+//                .map(Player::getId)
+//                .collect(Collectors.toList());
+//    }
 
-    public boolean canSponsorQuest(Player player, Quest quest) {
-        int stages = quest.getStages();
+    public boolean canSponsorQuest(Player player, int stages) {
         int foeCount = 0;
         int totalValue = 0;
 

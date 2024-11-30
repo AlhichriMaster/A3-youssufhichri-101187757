@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+    <header>
+        <title>Quest Game</title>
+        <h1>
+            4004 Card Game
+        </h1>
+    </header>
+
+    <body>
+        <div id="game-controls">
+            <button onclick="startGame()" class="button">Start Game</button>
+        </div>
+
+        <script>
+            async function startGame() {
+                const response = await fetch('http://localhost:8080/api/game', {
+                    method: 'GET'
+                });
+                gameState = await response.json();
+
+                // Load the startgame.html content
+                window.location.href = 'startgame.html';
+            }
+        </script>
+    </body>
+</html>
