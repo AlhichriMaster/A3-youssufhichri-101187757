@@ -40,4 +40,13 @@ public class Stage {
         //we can automatically assume that we have a foe card in this stage since it is enforced
         return weaponCards.size() + 1;
     }
+
+    public boolean hasWeapon(String id) {
+        for(AdventureCard card : weaponCards){
+            if(card.getId().equals(id)){
+                return true;
+            }
+        }
+        return false;
+    }
 }

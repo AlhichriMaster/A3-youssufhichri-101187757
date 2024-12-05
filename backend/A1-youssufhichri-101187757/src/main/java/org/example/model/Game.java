@@ -2,6 +2,7 @@ package org.example.model;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.example.dto.enums.GameStatus;
 import org.example.service.DeckService;
 import org.example.service.PlayerService;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,9 @@ public class Game {
 
     private EventCard pendingQuest;
     private QuestSponsorshipState questSponsorshipState;
+
+    private String playerNeedingTrim;
+    private GameStatus gameStatus;
 
     @Autowired
     public Game(DeckService deckService, PlayerService playerService) {

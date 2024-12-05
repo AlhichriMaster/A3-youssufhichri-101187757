@@ -43,11 +43,11 @@ public class Player {
     }
 
     // Replace scanner-based trimHand with a method that takes an index
-    public String discardCardAtIndex(int index) {
+    public Card discardCardAtIndex(int index) {
         if (index >= 0 && index < hand.size()) {
             Card discarded = hand.remove(index);
             sortHand();
-            return "Discarded: " + discarded.getId();
+            return discarded;
         }
         throw new IllegalArgumentException("Invalid card index");
     }

@@ -1,5 +1,6 @@
 package org.example.service;
 
+import jdk.jfr.Event;
 import org.example.dto.enums.GameStatus;
 import org.example.dto.response.GameStateDTO;
 import org.example.dto.response.WinnerDTO;
@@ -45,15 +46,16 @@ public class GameService {
             }
             eventDeck.refillFromDiscardPile(game.getEventDiscardPile());
         }
+
         EventCard card = (EventCard) eventDeck.drawCard();
         game.setPendingQuest(card);
-        System.out.println("This is the event card that we pulled: " + card.getId());
+//        System.out.println("This is the event card that we pulled: " + card.getId());
 //        handleEventCard(game, card);
         return createGameStateDTO(game);
     }
 
     // Event handling
-    private void handleEventCard(Game game, EventCard card) {
+    public GameStateDTO handleEventCard(Game game, EventCard card) {
         switch (card.getType()) {
             case PLAGUE:
                 game.getCurrentPlayer().removeShields(2);
@@ -64,27 +66,31 @@ public class GameService {
             case PROSPERITY:
                 handleProsperity(game);
                 break;
-            case QUEST:
-                // Instead of immediately processing the quest, set it as pending
-                game.setPendingQuest(card);
-                game.setQuestSponsorshipState(new QuestSponsorshipState(
-                        game.getPlayers().stream()
-                                .map(Player::getId)
-                                .collect(Collectors.toList())
-                ));
-                break;
         }
+        return createGameStateDTO(game);
     }
 
     private void handleQueensFavor(Game game) {
         Player currentPlayer = game.getCurrentPlayer();
+//        System.out.println("Before: Current player: " + currentPlayer.getId() + " Current hand size: " + currentPlayer.getHand().size());
         drawAdventureCards(currentPlayer, game.getAdventureDeck(), 2);
+        checkHandSize(game, currentPlayer);
     }
 
     private void handleProsperity(Game game) {
-        game.getPlayers().forEach(player ->
-                drawAdventureCards(player, game.getAdventureDeck(), 2)
-        );
+        game.getPlayers().forEach(player -> {
+            drawAdventureCards(player, game.getAdventureDeck(), 2);
+            checkHandSize(game, player);
+        });
+    }
+
+    private void checkHandSize(Game game, Player player) {
+        if (player.getHand().size() > 12) {
+
+            game.setGameStatus(GameStatus.HAND_TRIM_REQUIRED);
+
+            game.setPlayerNeedingTrim(player.getId());  // New field in Game
+        }
     }
 
     private void drawAdventureCards(Player player, Deck deck, int count) {
@@ -114,7 +120,7 @@ public class GameService {
         int currentTurn = 0;
         while (!isGameOver(game) && currentTurn < maxTurns) {
             playTurn(game);
-            moveToNextPlayer(game);
+//            moveToNextPlayer(game);
             currentTurn++;
         }
         return createGameStateDTO(game);
@@ -127,10 +133,10 @@ public class GameService {
                         .map(playerService::convertToPlayerDTO)
                         .collect(Collectors.toList()),
                 game.getCurrentPlayer().getId(),
-                game.getCurrentQuest() != null ? questService.convertToQuestDTO(game.getCurrentQuest()) : null,
                 isGameOver(game) ? GameStatus.FINISHED : GameStatus.IN_PROGRESS,
                 game.getAdventureDeck().getCards().size(),
                 game.getEventDeck().getCards().size(),
+                game.getCurrentQuest() != null ? questService.convertToQuestDTO(game.getCurrentQuest()) : null,
                 game.getPendingQuest(),  // Add these
                 game.getQuestSponsorshipState(),
                 game.getCurrentSponsor()

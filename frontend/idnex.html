@@ -20,7 +20,7 @@
     <div id="current-hand" class="current-hand"></div>
 
     <div id="game-controls">
-        <button onclick="playTurn()" class="button">Play Turn</button>
+        <button onclick="playTurn()" class="button">Draw Card</button>
     </div>
     
     <!-- <div id="players"></div> -->
@@ -142,52 +142,11 @@
             // Game Status
             document.getElementById('game-status').textContent = `Game Status: ${gameState.gameStatus}`;
             
-            // Sponsorship Prompt
-            const sponsorshipDiv = document.getElementById('sponsorship-prompt');
-            sponsorshipDiv.innerHTML = '';
-            
-            if (gameState.pendingQuest && 
-                gameState.questSponsorshipState && 
-                gameState.questSponsorshipState.currentPlayer === gameState.currentPlayerId) {
-                sponsorshipDiv.innerHTML = `
-                    <h3>Quest Sponsorship</h3>
-                    <p>Would you like to sponsor this quest?</p>
-                    <button onclick="respondToSponsorship(true)" class="button">Accept</button>
-                    <button onclick="respondToSponsorship(false)" class="button">Decline</button>
-                `;
-            }
-
-            // Quest Setup
-            const questSetupDiv = document.getElementById('quest-setup');
-            questSetupDiv.innerHTML = '';
-            
-            if (gameState.pendingQuest && gameState.currentSponsor === gameState.currentPlayerId) {
-                const stages = gameState.pendingQuest.stages;
-                questSetupDiv.innerHTML = `
-                    <h3>Quest Setup</h3>
-                    ${Array(stages).fill(0).map((_, i) => `
-                        <div class="stage-setup stage-${i}" data-foe="">
-                            <h4>Stage ${i + 1}</h4>
-                            <div class="card-selection">
-                                <h5>Select Foe:</h5>
-                                <div class="foe-cards">
-                                    ${renderPlayerFoeCards(i)}
-                                </div>
-                                <h5>Select Weapons:</h5>
-                                <div class="weapon-cards">
-                                    ${renderPlayerWeaponCards(i)}
-                                </div>
-                            </div>
-                        </div>
-                    `).join('')}
-                    <button onclick="submitQuestSetup()" class="button">Submit Quest Setup</button>
-                `;
-            }
             
             // Current Quest
             const questDiv = document.getElementById('current-quest');
             questDiv.innerHTML = gameState.currentQuest ? 
-                `Current Quest: ${gameState.currentQuest.name}` : 'No active quest';
+                `Current Quest: ${gameState.currentQuest.id}` : 'No active quest';
             
             // Deck counts
             document.getElementById('adventure-deck-count').textContent = gameState.adventureDeckSize;

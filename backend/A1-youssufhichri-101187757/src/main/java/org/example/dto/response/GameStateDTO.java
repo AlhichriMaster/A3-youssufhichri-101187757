@@ -13,12 +13,15 @@ import org.example.model.QuestSponsorshipState;
 @AllArgsConstructor
 @NoArgsConstructor
 public class GameStateDTO {
+    //Essential Game state
     private List<PlayerDTO> players;
     private String currentPlayerId;
-    private QuestDTO currentQuest;
     private GameStatus gameStatus;
+    //Deck information
     private int adventureDeckSize;
     private int eventDeckSize;
+    //Quest related fields
+    private QuestDTO currentQuest;
     private EventCard pendingQuest;  // Add this
     private QuestSponsorshipState questSponsorshipState;  // Add this
     private String currentSponsor;  // Add this

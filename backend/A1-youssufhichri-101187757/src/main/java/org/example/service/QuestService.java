@@ -1,5 +1,6 @@
 package org.example.service;
 
+import lombok.Data;
 import org.example.dto.enums.CardType;
 import org.example.dto.enums.QuestStatus;
 import org.example.dto.response.*;
@@ -13,9 +14,11 @@ import java.util.List;
 import java.util.stream.Collectors;
 import org.example.dto.enums.QuestStatus;
 
+@Data
 @Service
 public class QuestService {
     private final PlayerService playerService;
+    private List<String> questParticipants = new ArrayList<>();
 
     @Autowired
     public QuestService(PlayerService playerService) {
@@ -46,13 +49,6 @@ public class QuestService {
         );
     }
 
-//    public List<String> findPotentialSponsors(Game game) {
-//        return game.getPlayers().stream()
-//                .filter(player -> canSponsorQuest(player, game.getCurrentQuest()))
-//                .map(Player::getId)
-//                .collect(Collectors.toList());
-//    }
-
     public boolean canSponsorQuest(Player player, int stages) {
         int foeCount = 0;
         int totalValue = 0;
@@ -69,45 +65,96 @@ public class QuestService {
         return foeCount >= stages && totalValue >= (stages * (stages + 1) / 2) * 5;
     }
 
-    public QuestDTO setupQuest(Game game, SetupQuestRequest request) {
-        Quest quest = game.getCurrentQuest();
+    public boolean setupQuest(Game game, String playerId) {
+        // First check if there's a pending quest card
+        EventCard pendingQuest = game.getPendingQuest();
+        if (pendingQuest == null || !pendingQuest.getType().toString().equals("QUEST")) {
+            throw new GameException("No pending quest");
+        }
+
+        // Get the player who wants to sponsor
         Player sponsor = game.getPlayers().stream()
-                .filter(p -> p.getId().equals(request.getSponsorId()))
+                .filter(p -> p.getId().equals(playerId))
                 .findFirst()
-                .orElseThrow(() -> new GameException("Sponsor not found"));
+                .orElseThrow(() -> new GameException("Player not found"));
 
+        // Create quest from pending quest card
+        int stages = Integer.parseInt(pendingQuest.getId().substring(1));
+        Quest quest = new Quest(stages);
+
+        // Check if player can sponsor
+        if (!canSponsorQuest(sponsor, stages)) {
+            return false;
+        }
+
+        // Set up the quest
         quest.setSponsor(sponsor);
+        game.setCurrentQuest(quest);
 
-        // Validate and setup stages
-        int cardsToDraw = validateAndSetupStages(quest, sponsor, request.getStages());
-
-        // Find potential participants
-        List<String> potentialParticipants = findPotentialParticipants(game);
-
-        return new QuestDTO(
-                quest.getStages(),
-                sponsor.getId(),
-                convertStagesToDTO(quest.getStageList()),
-                potentialParticipants,
-                QuestStatus.AWAITING_PARTICIPANTS
-        );
+//        System.out.println("We set the current quest to: " + game.getCurrentQuest().getStages());
+        return true;
     }
 
-    private int validateAndSetupStages(Quest quest, Player sponsor, List<StageSetupRequest> stageRequests) {
-        int cardsUsed = 0;
-        for (int i = 0; i < stageRequests.size(); i++) {
-            StageSetupRequest stageRequest = stageRequests.get(i);
-            Stage stage = createStage(sponsor, stageRequest);
+    // Stage setup with validation
+    public Stage setupStage(Game game, SetupStageRequest request) {
+        Quest currentQuest = game.getCurrentQuest();
+        Player sponsor = currentQuest.getSponsor();
+//        System.out.println("Cuurent player, also sponsor: " + sponsor.getId());
+        // Create new stage
+        Stage stage = new Stage();
 
-            if (!isValidStage(stage, quest, i)) {
-                throw new GameException("Invalid stage setup");
+        // Validate and process each card in the request
+        for (String cardId : request.getCardIds()) {
+//            System.out.println("Card we are trying to get: " + cardId);
+            Card card = findCardInHand(sponsor, cardId);
+            if (card == null) {
+                throw new GameException("Card not found in sponsor's hand");
             }
 
-            quest.addStage(stage);
-            cardsUsed += stage.numOfCardsUsed();
+            if (card instanceof AdventureCard) {
+                AdventureCard adventureCard = (AdventureCard) card;
+
+                // Validate foe card (only one allowed per stage)
+                if (adventureCard.getType() == CardType.FOE) {
+                    if (stage.getFoeCard() != null) {
+                        throw new GameException("Stage already has a foe card");
+                    }
+                    stage.addCard(adventureCard);
+                    sponsor.discardCard(card);
+                }
+                // Validate weapon card (no duplicates allowed)
+                else if (adventureCard.getType() == CardType.WEAPON) {
+                    if (stage.hasWeapon(adventureCard.getId())) {
+                        throw new GameException("Duplicate weapon card not allowed");
+                    }
+                    stage.addCard(adventureCard);
+                    sponsor.discardCard(card);
+                }
+            }
         }
-        return cardsUsed;
+
+        // Validate stage completion
+        if (!stage.isValid()) {
+            throw new GameException("Stage must have exactly one foe card");
+        }
+
+        // Validate stage value compared to previous stage
+        if (!currentQuest.getStageList().isEmpty()) {
+            Stage previousStage = currentQuest.getStage(currentQuest.getStageList().size() - 1);
+            if (stage.getValue() <= previousStage.getValue()) {
+                throw new GameException("Stage value must be greater than previous stage");
+            }
+        }
+
+        // Add valid stage to quest
+        currentQuest.addStage(stage);
+
+        return stage;
     }
+
+
+
+
 
     public List<String> findPotentialParticipants(Game game) {
         return game.getPlayers().stream()
@@ -117,42 +164,90 @@ public class QuestService {
                 .collect(Collectors.toList());
     }
 
-    public boolean canParticipateInQuest(Player player, Quest quest) {
-        int stages = quest.getStages();
-        int totalValue = 0;
 
+    public boolean participateInQuest(Game game, String playerId) {
+        Player player = findPlayerById(game, playerId);
+        Quest currentQuest = game.getCurrentQuest();
+
+        if (currentQuest == null) {
+            throw new GameException("No active quest");
+        }
+
+        if (player == currentQuest.getSponsor()) {
+            throw new GameException("Sponsor cannot participate in their own quest");
+        }
+
+        if (!canParticipateInQuest(player, currentQuest)) {
+            return false;
+        }
+
+        questParticipants.add(playerId);
+        return true;
+    }
+
+    public boolean canParticipateInQuest(Player player, Quest quest) {
+        int weaponCount = 0;
         for (Card card : player.getHand()) {
             if (card instanceof AdventureCard) {
                 AdventureCard adventureCard = (AdventureCard) card;
-                totalValue += adventureCard.getValue();
+                if (adventureCard.getType() == CardType.WEAPON) {
+                    weaponCount++;
+                }
             }
         }
-        return totalValue >= (stages * (stages + 1) / 2) * 5;
+        // Player needs at least one weapon card per stage
+        return weaponCount >= quest.getStages();
     }
 
-    public QuestDTO resolveQuest(Game game, List<String> participantIds) {
+    public AttackResult processAttack(Game game, AttackRequest request) {
+        Player player = findPlayerById(game, request.getPlayerId());
+//        System.out.println("Player Hand: " + player.getHand().size());
+//        for(Card card : player.getHand()){
+//            System.out.println(card.getId());
+//        }
         Quest quest = game.getCurrentQuest();
-        List<Player> participants = participantIds.stream()
-                .map(id -> findPlayerById(game, id))
-                .collect(Collectors.toList());
+        Stage currentStage = quest.getStage(request.getStageNumber() - 1);
 
-        QuestResolutionDTO resolution = new QuestResolutionDTO();
-
-        for (int stageNum = 0; stageNum < quest.getStages(); stageNum++) {
-            StageResolutionDTO stageResolution = resolveStage(game, participants, stageNum);
-            resolution.addStageResolution(stageResolution);
-
-            participants = stageResolution.getWinners();
-            if (participants.isEmpty()) break;
+        // Validate player is a participant
+        if (!questParticipants.contains(request.getPlayerId())) {
+            throw new GameException("Player is not a quest participant");
         }
 
-        // Award shields to winners
-        participants.forEach(player -> player.addShields(quest.getStages()));
+        // Get and validate attack cards
+        List<AdventureCard> attackCards = new ArrayList<>();
+        for (String cardId : request.getCardIds()) {
+            System.out.println(cardId);
+            Card card = findCardInHand(player, cardId);
+            if (!(card instanceof AdventureCard) ||
+                    ((AdventureCard) card).getType() != CardType.WEAPON) {
+                throw new GameException("Invalid card for attack: " + cardId);
+            }
+            attackCards.add((AdventureCard) card);
+        }
 
-        // Draw cards for sponsor
-        awardSponsorCards(game, quest.getSponsor(), calculateSponsorCards(quest));
+        // Calculate attack value
+        int attackValue = calculateAttackValue(attackCards);
 
-        return createQuestDTO(game, quest, resolution);
+        // Determine if stage is cleared
+        boolean stageCleared = attackValue >= currentStage.getValue();
+
+        // Remove used cards from player's hand
+        attackCards.forEach(card -> player.discardCard(card));
+
+        // Draw a card after attack
+        player.drawCard(game.getAdventureDeck());
+
+        // If stage was cleared, check if it was the last stage
+        if (stageCleared && request.getStageNumber() == quest.getStages()) {
+            player.addShields(quest.getStages());
+        }
+
+        return new AttackResult(
+                true,
+                attackValue,
+                stageCleared,
+                attackCards.stream().map(Card::getId).collect(Collectors.toList())
+        );
     }
 
 
@@ -176,9 +271,9 @@ public class QuestService {
         return QuestStatus.COMPLETED;
     }
 
-    private int calculateAttackValue(List<Card> attack) {
-        return attack.stream()
-                .mapToInt(card -> ((AdventureCard) card).getValue())
+    private int calculateAttackValue(List<AdventureCard> cards) {
+        return cards.stream()
+                .mapToInt(AdventureCard::getValue)
                 .sum();
     }
 
@@ -220,15 +315,20 @@ public class QuestService {
     }
 
     private AdventureCard findCardInHand(Player sponsor, String foeCardId) {
+//        System.out.println("We got into findCardInHand");
         List<Card> hand = sponsor.getHand();
         for (int i = 0; i < hand.size(); i++){
+//            System.out.println("This is the hand being looped on in findCardInHand: " + hand.get(i).getId());
+//            System.out.println("This is the card id that we got from the frontend: " + foeCardId);
             if(hand.get(i).getId().equals(foeCardId)){
-                AdventureCard adventureCard = (AdventureCard) hand.remove(i);
+                AdventureCard adventureCard = (AdventureCard) hand.get(i);
+//                System.out.println("Successfully found the card and returned + removed it");
                 return adventureCard;
             }
         }
         throw new GameException("Card does not exist in your hand. SHOULD NEVER HAPPEN");
     }
+
 
     private boolean isValidStage(Stage stage, Quest quest, int stageIndex) {
         if (!stage.isValid()) {
