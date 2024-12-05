@@ -19,7 +19,8 @@ let selectedCards = new Set();
 let localPlayerId = null;
 let currentSponsorshipIndex = 0;
 const PLAYER_ORDER = ['P1', 'P2', 'P3', 'P4'];
-
+let questParticipants = new Map();
+let questWinners = []
 
 
 // Initial setup
@@ -28,7 +29,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const response = await fetch('http://localhost:8080/api/game');
         const data = await response.json();
         gameState = data;
-        localPlayerId = gameState.currentPlayerId; // Set initial local player
+        localPlayerId = gameState.currentPlayerId;
+        drawButton.style.display = 'block';  // Explicitly show draw button on load
         updateGameDisplay();
     } catch (error) {
         console.error('Error initializing game:', error);
@@ -336,52 +338,17 @@ async function respondToParticipation(joining) {
         });
 
         const result = await response.json();
-
-        // Fetch latest game state
-        const gameStateResponse = await fetch('http://localhost:8080/api/game');
-        const newGameState = await gameStateResponse.json();
-        gameState = newGameState;  // Update game state
-
+        
         if (joining) {
+            // Initialize participant tracking when they join
+            questParticipants.set(localPlayerId, {
+                active: true,
+                stagesCleared: 0
+            });
             selectedCards.clear();
             handleQuestAttack();
         } else {
-            // Get indices for progression
-            const sponsorId = gameState.currentQuest.sponsorId;
-            const sponsorIndex = PLAYER_ORDER.indexOf(sponsorId);
-            const currentIndex = PLAYER_ORDER.indexOf(localPlayerId);
-            const nextIndex = (currentIndex + 1) % PLAYER_ORDER.length;
-
-            console.log(`Current player: ${localPlayerId}, Next index: ${nextIndex}, Sponsor index: ${sponsorIndex}`);
-
-            if (nextIndex === sponsorIndex) {
-                if (currentStage < gameState.currentQuest.stages) {
-                    // Move to next stage
-                    console.log(`Moving to stage ${currentStage + 1}`);
-                    currentStage++;
-                    // Start with first player after sponsor
-                    localPlayerId = PLAYER_ORDER[(sponsorIndex + 1) % PLAYER_ORDER.length];
-                    handleParticipationSequence();
-                } else {
-                    // Quest is complete
-                    console.log('Quest complete, ending turn');
-                    try {
-                        const endResponse = await fetch('http://localhost:8080/api/game/endTurn', {
-                            method: 'POST'
-                        });
-                        const finalState = await endResponse.json();
-                        currentStage = 1;  // Reset stage
-                        updateGameState(finalState);
-                    } catch (error) {
-                        console.error('Error ending quest:', error);
-                    }
-                }
-            } else {
-                // Move to next player in same stage
-                console.log(`Moving to next player: ${PLAYER_ORDER[nextIndex]}`);
-                localPlayerId = PLAYER_ORDER[nextIndex];
-                handleParticipationSequence();
-            }
+            moveToNextActivePlayer();
         }
     } catch (error) {
         console.error('Error responding to quest participation:', error);
@@ -479,47 +446,34 @@ async function confirmAttack() {
         const attackResult = await response.json();
         selectedCards.clear();
 
+        // Update participant's status based on attack result
+        const participantStatus = questParticipants.get(localPlayerId);
+        if (attackResult.stageCleared) {
+            participantStatus.stagesCleared++;
+            console.log(`${localPlayerId} cleared stage ${currentStage} (Total stages cleared: ${participantStatus.stagesCleared})`);
+            
+            if (participantStatus.stagesCleared === gameState.currentQuest.stages) {
+                questWinners.push(localPlayerId);
+                alert(`${localPlayerId} has completed all stages!`);
+            }
+        } else {
+            participantStatus.active = false;
+            console.log(`${localPlayerId} failed stage ${currentStage}`);
+        }
+        questParticipants.set(localPlayerId, participantStatus);
+
         // Get fresh game state
         const gameStateResponse = await fetch('http://localhost:8080/api/game');
         const newGameState = await gameStateResponse.json();
         gameState = newGameState;
 
-        // Progress to next player/stage
-        const sponsorId = gameState.currentQuest.sponsorId;
-        const sponsorIndex = PLAYER_ORDER.indexOf(sponsorId);
-        const currentIndex = PLAYER_ORDER.indexOf(localPlayerId);
-        const nextIndex = (currentIndex + 1) % PLAYER_ORDER.length;
-
-        console.log(`Attack complete. Current stage: ${currentStage}, Next player index: ${nextIndex}`);
-
-        if (nextIndex === sponsorIndex) {
-            if (currentStage < gameState.currentQuest.stages) {
-                // Move to next stage
-                currentStage++;
-                // Start with first player after sponsor
-                localPlayerId = PLAYER_ORDER[(sponsorIndex + 1) % PLAYER_ORDER.length];
-                console.log(`Moving to stage ${currentStage} with player ${localPlayerId}`);
-                handleParticipationSequence();
-            } else {
-                // Quest is complete
-                console.log('Quest complete, ending turn');
-                try {
-                    const endResponse = await fetch('http://localhost:8080/api/game/endTurn', {
-                        method: 'POST'
-                    });
-                    const finalState = await endResponse.json();
-                    currentStage = 1;  // Reset stage
-                    updateGameState(finalState);
-                } catch (error) {
-                    console.error('Error ending quest:', error);
-                }
-            }
-        } else {
-            // Move to next player in same stage
-            localPlayerId = PLAYER_ORDER[nextIndex];
-            console.log(`Moving to next player ${localPlayerId} in stage ${currentStage}`);
-            handleParticipationSequence();
+        // Check if this was the final stage and player won
+        if (attackResult.stageCleared && currentStage === gameState.currentQuest.stages) {
+            questWinners.push(localPlayerId)
+            alert(`${localPlayerId} has won the quest!`);
         }
+
+        moveToNextActivePlayer();
 
     } catch (error) {
         console.error('Error submitting attack:', error);
@@ -542,6 +496,103 @@ async function withdrawFromQuest() {
     } catch (error) {
         console.error('Error withdrawing from quest:', error);
         alert('Failed to withdraw from quest. Please try again.');
+    }
+}
+
+
+function moveToNextActivePlayer() {
+    const sponsorId = gameState.currentQuest.sponsorId;
+    const sponsorIndex = PLAYER_ORDER.indexOf(sponsorId);
+    let currentIndex = PLAYER_ORDER.indexOf(localPlayerId);
+    let nextIndex = (currentIndex + 1) % PLAYER_ORDER.length;
+
+    console.log(`Moving from player ${localPlayerId} (index ${currentIndex}) to next player`);
+    
+    // Look for next active player or unasked player for current stage
+    while (nextIndex !== sponsorIndex) {
+        const nextPlayerId = PLAYER_ORDER[nextIndex];
+        const participantStatus = questParticipants.get(nextPlayerId);
+        
+        // If this player hasn't been asked yet or is active and hasn't attempted current stage
+        if (!participantStatus || (participantStatus.active && participantStatus.stagesCleared < currentStage)) {
+            localPlayerId = nextPlayerId;
+            handleParticipationSequence();
+            return;
+        }
+        nextIndex = (nextIndex + 1) % PLAYER_ORDER.length;
+    }
+    
+    // If we get here, we've asked all players for this stage
+    // Check if any players are still active
+    let hasActivePlayers = false;
+    questParticipants.forEach((status, playerId) => {
+        if (status.active) {
+            hasActivePlayers = true;
+        }
+    });
+
+    if (!hasActivePlayers) {
+        // No active players left, end the quest
+        console.log('No active players remaining, ending quest');
+        endQuest();
+    } else if (currentStage < gameState.currentQuest.stages) {
+        // Still have active players and more stages to go
+        currentStage++;
+        console.log(`Moving to stage ${currentStage}`);
+        // Start with first player after sponsor
+        localPlayerId = PLAYER_ORDER[(sponsorIndex + 1) % PLAYER_ORDER.length];
+        handleParticipationSequence();
+    } else {
+        // All stages complete
+        console.log('All stages complete, ending quest');
+        endQuest();
+    }
+}
+
+
+async function endQuest() {
+    try {        
+        if (questWinners.length > 0) {
+            const shieldResponse = await fetch('http://localhost:8080/api/game/quest/addShield', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    playerIds: questWinners
+                })
+            });
+            
+            if (!shieldResponse.ok) {
+                throw new Error('Failed to add shields to winners');
+            }
+            
+            const updatedState = await shieldResponse.json();
+            gameState = updatedState;
+            alert(`Quest completed! Winners: ${questWinners.join(', ')}`);
+        }
+
+        // End the turn and get final state
+        const endResponse = await fetch('http://localhost:8080/api/game/endTurn', {
+            method: 'POST'
+        });
+        const finalState = await endResponse.json();
+        
+        // Reset quest-related variables
+        currentStage = 1;
+        questParticipants.clear();
+        questWinners = [];
+        
+        // Update state and UI for next player's turn
+        gameState = finalState;
+        localPlayerId = finalState.currentPlayerId;
+        drawButton.style.display = 'block';
+        actionArea.innerHTML = '';
+        
+        // Update display with new state
+        updateGameDisplay();
+
+    } catch (error) {
+        console.error('Error ending quest:', error);
+        alert('Failed to properly end quest. Please try again.');
     }
 }
 
@@ -609,14 +660,19 @@ function updateGameDisplay() {
     document.getElementById('adventure-deck-count').textContent = gameState.adventureDeckSize;
     document.getElementById('event-deck-count').textContent = gameState.eventDeckSize;
     
+    // Always show current player
+    drawnCard.innerHTML = `<h3>Current Player: ${gameState.currentPlayerId}</h3>`;
+    
     const currentHandDisplay = document.getElementById('current-hand');
     
-    // Handle visibility based on quest state
-    if (gameState.currentQuest) {
-        currentHandDisplay.style.display = 'none';
-    } else {
+    // Show hand and draw button when there's no quest active
+    if (!gameState.currentQuest && !gameState.pendingQuest) {
         currentHandDisplay.style.display = 'block';
-        // Only show the hand of the local player
+        actionArea.innerHTML = `
+            <button id="draw-button" onclick="drawCard()" class="button">Draw Card</button>
+        `;  // Actually create the button element
+
+        // Show the hand of the current player
         const localPlayer = gameState.players.find(p => p.id === localPlayerId);
         if (localPlayer) {
             handCards.innerHTML = localPlayer.hand.map(card => `
@@ -627,6 +683,8 @@ function updateGameDisplay() {
                 </div>
             `).join('');
         }
+    } else {
+        currentHandDisplay.style.display = 'none';
     }
     
     // Update turn/sponsor information

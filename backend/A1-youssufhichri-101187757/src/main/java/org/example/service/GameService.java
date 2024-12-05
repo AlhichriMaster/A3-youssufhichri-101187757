@@ -33,6 +33,8 @@ public class GameService {
         int currentIndex = game.getPlayers().indexOf(currentPlayer);
         Player nextPlayer = game.getPlayers().get((currentIndex + 1) % game.getPlayers().size());
         game.setCurrentPlayer(nextPlayer);
+        game.setPendingQuest(null);
+        game.setCurrentQuest(null);
         return createGameStateDTO(game);
     }
 
@@ -122,6 +124,19 @@ public class GameService {
             playTurn(game);
 //            moveToNextPlayer(game);
             currentTurn++;
+        }
+        return createGameStateDTO(game);
+    }
+
+    public GameStateDTO addShieldsToWinners(Game game, List<String> playerIds) {
+        for (String playerId : playerIds) {
+            for(Player player : game.getPlayers()){
+                if(player.getId().equals(playerId)){
+                    // Add shields equal to the number of stages in the quest
+                    player.addShields(game.getCurrentQuest().getStages());
+                    System.out.println(player.getId() + " got " + player.getShields() + " shields!");
+                }
+            }
         }
         return createGameStateDTO(game);
     }

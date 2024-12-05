@@ -1,9 +1,6 @@
 package org.example.controller;
 
-import org.example.dto.response.AttackRequest;
-import org.example.dto.response.AttackResult;
-import org.example.dto.response.GameStateDTO;
-import org.example.dto.response.SetupStageRequest;
+import org.example.dto.response.*;
 import org.example.model.Game;
 import org.example.model.Stage;
 import org.example.service.GameService;
@@ -91,10 +88,18 @@ public class GameController {
     }
 
 
+    @PostMapping("/quest/addShield")
+    public GameStateDTO addShields(@RequestBody AddShieldRequest request) {
+        System.out.println("The number of shields being inputed in the request: " + game.getCurrentQuest().getStages());
+        return gameService.addShieldsToWinners(game, request.getPlayerIds());
+    }
+
     //handle the "ending of turn"
     @PostMapping("/endTurn")
     public GameStateDTO endCurrentPlayersTurn() {
-        return gameService.moveToNextPlayer(game);
+        GameStateDTO newState = gameService.moveToNextPlayer(game);
+        System.out.println("We moved to the next player: " + newState.getCurrentPlayerId());
+        return newState;
     }
 
 
