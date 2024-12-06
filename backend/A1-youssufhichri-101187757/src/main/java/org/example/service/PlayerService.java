@@ -1,5 +1,6 @@
 package org.example.service;
 
+import org.example.dto.request.DiscardCardRequest;
 import org.example.dto.response.PlayerDTO;
 import org.example.dto.response.CardDTO;
 import org.example.dto.response.HandDTO;
@@ -83,39 +84,19 @@ public class PlayerService {
         }
     }
 
-    // Get player's hand as DTO
-    public HandDTO getPlayerHand(Player player) {
-        return new HandDTO(
-                player.getId(),
-                convertToCardDTOs(player.getHand())
-        );
-    }
+    public void discardCardsFromHand(Game game, DiscardCardRequest request) {
+        Player player = game.getPlayers().stream()
+                .filter(p -> p.getId().equals(request.getPlayerId()))
+                .findFirst()
+                .orElseThrow(() -> new GameException("Player not found"));
 
-    // Handle player withdrawal from quest
-    public boolean handleWithdrawal(Player player, int stageNumber, boolean withdrawalDecision) {
-        if (withdrawalDecision) {
-            return true;
+        // Discard the selected cards
+        for (String cardId : request.getCardIds()) {
+            Card cardToDiscard = player.getHand().stream()
+                    .filter(card -> card.getId().equals(cardId))
+                    .findFirst()
+                    .orElseThrow(() -> new GameException("Card not found in player's hand"));
+            player.discardCard(cardToDiscard);
         }
-        return false;
-    }
-
-    // Add cards to player's hand
-    public void addCardsToHand(Player player, List<Card> cards) {
-        cards.forEach(card -> player.getHand().add(card));
-        player.sortHand();
-    }
-
-    // Remove cards from player's hand
-    public void removeCardsFromHand(Player player, List<Card> cards) {
-        cards.forEach(card -> {
-            if (!player.getHand().remove(card)) {
-                throw new GameException("Card not found in player's hand: " + card.getId());
-            }
-        });
-    }
-
-    // Check if player has specific cards
-    public boolean hasCards(Player player, List<Card> cards) {
-        return new HashSet<>(player.getHand()).containsAll(cards);
     }
 }

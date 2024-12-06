@@ -62,6 +62,4 @@ public class Game {
     private void initializePlayersHands() {
         playerService.initializeAllPlayersHands(players, adventureDeck);
     }
-
-
 }

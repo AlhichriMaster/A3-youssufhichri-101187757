@@ -12,13 +12,11 @@ import java.util.stream.Collectors;
 
 @Service
 public class GameService {
-    private final DeckService deckService;
     private final PlayerService playerService;
     private final QuestService questService;
 
     @Autowired
-    public GameService(DeckService deckService, PlayerService playerService, QuestService questService) {
-        this.deckService = deckService;
+    public GameService(PlayerService playerService, QuestService questService) {
         this.playerService = playerService;
         this.questService = questService;
     }
@@ -101,15 +99,8 @@ public class GameService {
         }
     }
 
-    public List<WinnerDTO> getWinners(Game game) {
-        return game.getPlayers().stream()
-                .filter(player -> player.getShields() >= 7)
-                .map(player -> new WinnerDTO(player.getId(), player.getShields()))
-                .collect(Collectors.toList());
-    }
-
     public GameStateDTO playTurn(Game game) {
-        if (isGameOver(game)) {
+        if (game.getGameStatus() == GameStatus.FINISHED) {
             return createGameStateDTO(game);
         }
 
@@ -130,29 +121,60 @@ public class GameService {
 
     public GameStateDTO addShieldsToWinners(Game game, List<String> playerIds) {
         for (String playerId : playerIds) {
-            for(Player player : game.getPlayers()){
-                if(player.getId().equals(playerId)){
-                    // Add shields equal to the number of stages in the quest
-                    player.addShields(game.getCurrentQuest().getStages());
-                    System.out.println(player.getId() + " got " + player.getShields() + " shields!");
+            Player winner = game.getPlayers().stream()
+                    .filter(player -> player.getId().equals(playerId))
+                    .findFirst()
+                    .orElse(null);
+
+            if (winner != null) {
+                // Add shields equal to the number of stages in the quest
+                System.out.println("This is the players shields before we add: " + winner);
+                System.out.println(winner.addShields(game.getCurrentQuest().getStages()));
+
+                // Check for game over immediately after adding shields
+                if (winner.getShields() >= 7) {
+                    game.setGameStatus(GameStatus.FINISHED);
+                    return createGameStateDTO(game);
                 }
+            }
+        }
+
+        return createGameStateDTO(game);
+    }
+
+    public GameStateDTO handleQuestCompletion(Game game) {
+        Quest currentQuest = game.getCurrentQuest();
+        if (currentQuest != null) {
+            questService.rewardSponsor(game, currentQuest);
+
+            // After rewarding the sponsor, check if they need to trim their hand
+            Player sponsor = currentQuest.getSponsor();
+            if (sponsor.getHand().size() > 12) {
+                game.setGameStatus(GameStatus.HAND_TRIM_REQUIRED);
+                game.setPlayerNeedingTrim(sponsor.getId());
             }
         }
         return createGameStateDTO(game);
     }
 
+
     // Helper method to create GameStateDTO
     public GameStateDTO createGameStateDTO(Game game) {
+        GameStatus status = game.getGameStatus();
+        if (isGameOver(game)) {
+            status = GameStatus.FINISHED;
+        }
+
         return new GameStateDTO(
                 game.getPlayers().stream()
                         .map(playerService::convertToPlayerDTO)
                         .collect(Collectors.toList()),
                 game.getCurrentPlayer().getId(),
-                isGameOver(game) ? GameStatus.FINISHED : GameStatus.IN_PROGRESS,
+                status,  // Use our determined status
                 game.getAdventureDeck().getCards().size(),
                 game.getEventDeck().getCards().size(),
                 game.getCurrentQuest() != null ? questService.convertToQuestDTO(game.getCurrentQuest()) : null,
-                game.getPendingQuest(),  // Add these
+                game.getPendingQuest(),
                 game.getQuestSponsorshipState(),
                 game.getCurrentSponsor()
         );

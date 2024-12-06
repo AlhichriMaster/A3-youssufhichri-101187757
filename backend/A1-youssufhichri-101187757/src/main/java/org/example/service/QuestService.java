@@ -12,7 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.example.dto.enums.QuestStatus;
 
 @Data
 @Service
@@ -25,29 +24,6 @@ public class QuestService {
         this.playerService = playerService;
     }
 
-    // Update the QuestDTO constructor call
-    public QuestDTO handleQuestCard(Game game, EventCard card) {
-        int stages = Integer.parseInt(card.getId().substring(1));
-        List<String> potentialSponsors = game.getPlayers().stream()
-                .filter(player -> canSponsorQuest(player, stages))  // Pass stages instead of Quest
-                .map(Player::getId)
-                .collect(Collectors.toList());
-
-        if (potentialSponsors.isEmpty()) {
-            return null;
-        }
-
-        game.setPendingQuest(card);
-        game.setQuestSponsorshipState(new QuestSponsorshipState(potentialSponsors));
-
-        return new QuestDTO(
-                stages,
-                null,
-                new ArrayList<>(),
-                potentialSponsors,
-                QuestStatus.AWAITING_SPONSOR
-        );
-    }
 
     public boolean canSponsorQuest(Player player, int stages) {
         int foeCount = 0;
@@ -153,18 +129,6 @@ public class QuestService {
     }
 
 
-
-
-
-    public List<String> findPotentialParticipants(Game game) {
-        return game.getPlayers().stream()
-                .filter(player -> player != game.getCurrentQuest().getSponsor()
-                        && canParticipateInQuest(player, game.getCurrentQuest()))
-                .map(Player::getId)
-                .collect(Collectors.toList());
-    }
-
-
     public boolean participateInQuest(Game game, String playerId) {
         Player player = findPlayerById(game, playerId);
         Quest currentQuest = game.getCurrentQuest();
@@ -237,11 +201,6 @@ public class QuestService {
         // Draw a card after attack
         player.drawCard(game.getAdventureDeck());
 
-        // If stage was cleared, check if it was the last stage
-        if (stageCleared && request.getStageNumber() == quest.getStages()) {
-            player.addShields(quest.getStages());
-        }
-
         return new AttackResult(
                 true,
                 attackValue,
@@ -250,35 +209,31 @@ public class QuestService {
         );
     }
 
-
-    private QuestDTO createQuestDTO(Game game, Quest quest, QuestResolutionDTO resolution) {
-        return new QuestDTO(
-                quest.getStages(),
-                quest.getSponsor() != null ? quest.getSponsor().getId() : null,
-                convertStagesToDTO(quest.getStageList()),
-                resolution != null ?
-                        new ArrayList<>() :
-                        findPotentialParticipants(game),
-                determineQuestStatus(resolution)
-        );
-    }
-
-    // Add this helper method to determine quest status based on resolution
-    private QuestStatus determineQuestStatus(QuestResolutionDTO resolution) {
-        if (resolution == null) {
-            return QuestStatus.IN_PROGRESS;
-        }
-        return QuestStatus.COMPLETED;
-    }
-
     private int calculateAttackValue(List<AdventureCard> cards) {
         return cards.stream()
                 .mapToInt(AdventureCard::getValue)
                 .sum();
     }
 
-    private void discardCards(Game game, List<Card> cards) {
-        cards.forEach(card -> game.getAdventureDiscardPile().addCard(card));
+    public void rewardSponsor(Game game, Quest quest) {
+        Player sponsor = quest.getSponsor();
+
+        // Calculate reward:
+        // Number of stages + number of cards used in setting up stages
+        int stageCount = quest.getStages();
+        int cardsUsed = quest.getStageList().stream()
+                .mapToInt(stage -> {
+                    // Count foe card + weapon cards for each stage
+                    return 1 + stage.getWeaponCards().size();
+                })
+                .sum();
+
+        int totalReward = stageCount + cardsUsed;
+
+        // Draw reward cards
+        for (int i = 0; i < totalReward; i++) {
+            sponsor.drawCard(game.getAdventureDeck());
+        }
     }
 
     public QuestDTO convertToQuestDTO(Quest quest) {
@@ -407,4 +362,6 @@ public class QuestService {
         // Add other status conditions based on your game rules
         return QuestStatus.IN_PROGRESS;
     }
+
+
 }
