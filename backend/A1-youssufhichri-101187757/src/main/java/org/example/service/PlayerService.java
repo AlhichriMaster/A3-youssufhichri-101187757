@@ -85,6 +85,7 @@ public class PlayerService {
     }
 
     public void discardCardsFromHand(Game game, DiscardCardRequest request) {
+
         Player player = game.getPlayers().stream()
                 .filter(p -> p.getId().equals(request.getPlayerId()))
                 .findFirst()
@@ -96,6 +97,8 @@ public class PlayerService {
                     .filter(card -> card.getId().equals(cardId))
                     .findFirst()
                     .orElseThrow(() -> new GameException("Card not found in player's hand"));
+
+            System.out.println("we are ACTUALLY discarding these cards: " + cardToDiscard);
             player.discardCard(cardToDiscard);
         }
     }

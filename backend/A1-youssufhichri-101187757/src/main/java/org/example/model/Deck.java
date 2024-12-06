@@ -21,6 +21,7 @@ public class Deck {
         if (isEmpty()) {
             return null;
         }
+//        System.out.println("We got into drawCard");
         return cards.remove(cards.size() -1);
     }
 

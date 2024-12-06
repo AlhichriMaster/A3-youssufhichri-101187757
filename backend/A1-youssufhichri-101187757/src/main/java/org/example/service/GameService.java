@@ -3,11 +3,11 @@ package org.example.service;
 import jdk.jfr.Event;
 import org.example.dto.enums.GameStatus;
 import org.example.dto.response.GameStateDTO;
-import org.example.dto.response.WinnerDTO;
 import org.example.model.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.List;
+import org.example.exception.GameException;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,18 +38,24 @@ public class GameService {
 
     // Card handling
     public GameStateDTO drawEventCard(Game game) {
+        System.out.println("We are in drawEventCard");
         Deck eventDeck = game.getEventDeck();
+        System.out.println("We got the event deck");
         if (eventDeck.isEmpty()) {
+            System.out.println("We got in the first if");
             if (game.getEventDiscardPile().isEmpty()) {
                 // Handle case where both decks are empty
+                System.out.println("We got in the second if");
                 return createGameStateDTO(game);
             }
             eventDeck.refillFromDiscardPile(game.getEventDiscardPile());
         }
 
+        System.out.println("We got out of the ifs");
         EventCard card = (EventCard) eventDeck.drawCard();
+        System.out.println("We got a card" + card.getId());
         game.setPendingQuest(card);
-//        System.out.println("This is the event card that we pulled: " + card.getId());
+        System.out.println("This is the event card that we pulled: " + card.getId());
 //        handleEventCard(game, card);
         return createGameStateDTO(game);
     }
@@ -99,13 +105,25 @@ public class GameService {
         }
     }
 
+    public GameStateDTO drawCardForQuestParticipation(Game game, String playerId){
+        Player player = game.getPlayers().stream()
+                .filter(p -> p.getId().equals(playerId))
+                .findFirst()
+                .orElseThrow(() -> new GameException("Player not found"));
+
+        System.out.println("We drew this card : " + player.drawCard(game.getAdventureDeck()) + " For this player: " + player.getId());
+
+        return createGameStateDTO(game);
+    }
+
     public GameStateDTO playTurn(Game game) {
+//        System.out.println("We got into play");
         if (game.getGameStatus() == GameStatus.FINISHED) {
+            System.out.println("We got into the if statement inside of playTurn meaning we set the game as FINISHED");
             return createGameStateDTO(game);
         }
-
-        drawEventCard(game);
-        return createGameStateDTO(game);
+        System.out.println("We called play turn at the end meaning we clicked the drawcard button");
+        return drawEventCard(game);
     }
 
     public GameStateDTO startGame(Game game) {
@@ -120,6 +138,7 @@ public class GameService {
     }
 
     public GameStateDTO addShieldsToWinners(Game game, List<String> playerIds) {
+        // Process each winner one at a time
         for (String playerId : playerIds) {
             Player winner = game.getPlayers().stream()
                     .filter(player -> player.getId().equals(playerId))
@@ -127,18 +146,25 @@ public class GameService {
                     .orElse(null);
 
             if (winner != null) {
-                // Add shields equal to the number of stages in the quest
+                // Log before state
                 System.out.println("This is the players shields before we add: " + winner);
-                System.out.println(winner.addShields(game.getCurrentQuest().getStages()));
 
-                // Check for game over immediately after adding shields
-                if (winner.getShields() >= 7) {
-                    game.setGameStatus(GameStatus.FINISHED);
-                    return createGameStateDTO(game);
-                }
+                // Add shields and store result
+                int addedShields = game.getCurrentQuest().getStages();
+                winner.addShields(addedShields);
+
+                // Log after state to verify addition
+                System.out.println(winner.getId() + " gained: " + addedShields +
+                        "shields. Current total: " + winner.getShields());
             }
         }
 
+        // After processing all winners, check game state
+        if (isGameOver(game)) {
+            game.setGameStatus(GameStatus.FINISHED);
+        }
+
+        // Return updated state
         return createGameStateDTO(game);
     }
 
@@ -152,6 +178,7 @@ public class GameService {
             if (sponsor.getHand().size() > 12) {
                 game.setGameStatus(GameStatus.HAND_TRIM_REQUIRED);
                 game.setPlayerNeedingTrim(sponsor.getId());
+                game.setCurrentQuest(null);
             }
         }
         return createGameStateDTO(game);

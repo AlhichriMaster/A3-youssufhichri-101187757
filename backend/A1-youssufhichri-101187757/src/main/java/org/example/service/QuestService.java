@@ -165,10 +165,6 @@ public class QuestService {
 
     public AttackResult processAttack(Game game, AttackRequest request) {
         Player player = findPlayerById(game, request.getPlayerId());
-//        System.out.println("Player Hand: " + player.getHand().size());
-//        for(Card card : player.getHand()){
-//            System.out.println(card.getId());
-//        }
         Quest quest = game.getCurrentQuest();
         Stage currentStage = quest.getStage(request.getStageNumber() - 1);
 
@@ -197,9 +193,6 @@ public class QuestService {
 
         // Remove used cards from player's hand
         attackCards.forEach(card -> player.discardCard(card));
-
-        // Draw a card after attack
-        player.drawCard(game.getAdventureDeck());
 
         return new AttackResult(
                 true,

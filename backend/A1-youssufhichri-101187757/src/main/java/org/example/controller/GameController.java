@@ -29,6 +29,13 @@ public class GameController {
         this.playerService = playerService;
     }
 
+    @GetMapping("/")
+    public String redirectToStartGame() {
+        return "redirect:/startgame.html";
+    }
+
+
+
     @GetMapping("")
     public GameStateDTO getGameState() {
         return gameService.createGameStateDTO(game);
@@ -62,10 +69,10 @@ public class GameController {
     //handle the setup of a quest
     @PostMapping("/quest/sponsor")
     public ResponseEntity<Boolean> sponsorQuest(@RequestParam String playerId) {
-        System.out.println("This is the player who is sponsoring the quest: " + playerId);
-        for(Card card : game.getPlayers().get(1).getHand()){
-            System.out.println(card.getId());
-        }
+//        System.out.println("This is the player who is sponsoring the quest: " + playerId);
+//        for(Card card : game.getPlayers().get(1).getHand()){
+//            System.out.println(card.getId());
+//        }
         return ResponseEntity.ok(questService.setupQuest(game, playerId));
     }
 
@@ -77,8 +84,13 @@ public class GameController {
     //handle the setting up of the attack
     @PostMapping("/quest/participate")
     public ResponseEntity<Boolean> participateInQuest(@RequestParam String playerId) {
-        System.out.println("This is the playerId we got: " + playerId);
+//        System.out.println("This is the playerId we got: " + playerId);
         return ResponseEntity.ok(questService.participateInQuest(game, playerId));
+    }
+
+    @PostMapping("/quest/drawParticipationCard")
+    public GameStateDTO drawParticipationCard(@RequestParam String playerId) {
+        return gameService.drawCardForQuestParticipation(game, playerId);
     }
 
     @PostMapping("/quest/attack")
@@ -95,7 +107,7 @@ public class GameController {
 
     @PostMapping("/quest/addShield")
     public GameStateDTO addShields(@RequestBody AddShieldRequest request) {
-        System.out.println("This is the number of players who won this quest:" + request.getPlayerIds());
+//        System.out.println("This is the number of players who won this quest:" + request.getPlayerIds());
         return gameService.addShieldsToWinners(game, request.getPlayerIds());
     }
 
@@ -103,7 +115,7 @@ public class GameController {
     @PostMapping("/endTurn")
     public GameStateDTO endCurrentPlayersTurn() {
         GameStateDTO newState = gameService.moveToNextPlayer(game);
-        System.out.println("We moved to the next player: " + newState.getCurrentPlayerId());
+//        System.out.println("We moved to the next player: " + newState.getCurrentPlayerId());
         return newState;
     }
 
