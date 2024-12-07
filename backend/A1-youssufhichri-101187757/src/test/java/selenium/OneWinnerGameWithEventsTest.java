@@ -29,8 +29,8 @@ import static org.junit.Assert.*;
         classes = {Main.class, TestConfig.class},
         webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT
 )
-@ActiveProfiles({"test", "two-winner-test"})
-public class TwoWinnerGameTwoWinnerQuestTest {
+@ActiveProfiles({"test", "one-winner-test"})
+public class OneWinnerGameWithEventsTest {
 
     private WebDriver driver;
     private WebDriverWait wait;
@@ -53,7 +53,7 @@ public class TwoWinnerGameTwoWinnerQuestTest {
         driver.manage().window().maximize();
 
         deckService.setTestMode(true);
-//        deckService.setTestScenario("TWO_WINNER");
+//        deckService.setTestScenario("ONE_WINNER");
         game.setEventDeck(deckService.createEventDeck());
 
         driver.get("///G:/School/FourthYear/COMP 4004/A3-youssufhichri-101187757/frontend/startgame.html");
@@ -84,7 +84,6 @@ public class TwoWinnerGameTwoWinnerQuestTest {
                 By.xpath("//div[contains(@class, 'hand-trimming')]")));
 
         for (String cardId : cardsToDiscard) {
-            System.out.println("We want to trim these cards: " + cardId);
             waitAndClick(By.xpath(
                     "//div[contains(@class, 'card')]//h4[text()='" + cardId + "']/parent::div"));
         }
@@ -93,11 +92,10 @@ public class TwoWinnerGameTwoWinnerQuestTest {
         refreshGameState();
     }
 
-    private void sponsorQuest(String foeCard, String... weaponCards) {
-        waitAndClick(By.xpath("//div[contains(@class, 'card')]//h4[text()='" + foeCard + "']/parent::div"));
-        for (String weaponCard : weaponCards) {
+    private void sponsorQuest(String... cards) {
+        for (String card : cards) {
             waitAndClick(By.xpath(
-                    "//div[contains(@class, 'card')]//h4[text()='" + weaponCard + "']/parent::div"));
+                    "//div[contains(@class, 'card')]//h4[text()='" + card + "']/parent::div"));
         }
         waitAndClick(By.xpath("//button[text()='Confirm Stage']"));
         waitForStateUpdate();
@@ -144,18 +142,19 @@ public class TwoWinnerGameTwoWinnerQuestTest {
     }
 
     @Test
-    public void testTwoWinnerQuest() {
+    public void testOneWinnerGameWithEvents() {
         // Initial state verification
         verifyPlayerStats("P1", 0, 12);
         verifyPlayerStats("P2", 0, 12);
         verifyPlayerStats("P3", 0, 12);
         verifyPlayerStats("P4", 0, 12);
 
-        for(Player player : game.getPlayers() ){
-            System.out.println("Starting " + player.getId() + " Hand: ");
-            for(Card card: player.getHand()){
-                System.out.println(card.getId());
+        for(Player player : game.getPlayers()){
+            System.out.print(player.getId() + "'s cards: ");
+            for (Card card : player.getHand()){
+                System.out.print(card.getId() + ", ");
             }
+            System.out.print("\n");
         }
 
         // First Quest
@@ -164,84 +163,114 @@ public class TwoWinnerGameTwoWinnerQuestTest {
         waitAndClick(By.xpath("//button[text()='Accept']"));
         waitForStateUpdate();
 
+        // P1 sponsors quest stages
         sponsorQuest("F5");  // Stage 1
-        sponsorQuest("F5", "D5");  // Stage 2
-        sponsorQuest("F10", "H10");  // Stage 3
-        sponsorQuest("F10", "B15");  // Stage 4
+        sponsorQuest("F10");  // Stage 2
+        sponsorQuest("F15");  // Stage 3
+        sponsorQuest("F20");  // Stage 4
 
-        // P2's participation
-        waitAndClick(By.xpath("//button[text()='Join Quest']"));
+        // Stage 1 participation
+        waitAndClick(By.xpath("//button[text()='Join Quest']")); // P2
         handleHandTrim("F5");
-        performAttack("H10");
+        performAttack("S10");
 
-        // P3 accepts/loses
-        waitAndClick(By.xpath("//button[text()='Join Quest']"));
-        handleHandTrim("F5");
-        performAttack();
-        waitForStateUpdate();
-
-        // P4's participation
-        waitAndClick(By.xpath("//button[text()='Join Quest']"));
+        waitAndClick(By.xpath("//button[text()='Join Quest']")); // P3
         handleHandTrim("F10");
-        performAttack("H10");
+        performAttack("S10");
+
+        waitAndClick(By.xpath("//button[text()='Join Quest']")); // P4
+        handleHandTrim("F20");
+        performAttack("S10");
 
         // Stage 2
-        performAttack("S10"); // P2 attack
-        performAttack("S10"); // P4 attack
+        performAttack("H10"); // P2
+        performAttack("H10"); // P3
+        performAttack("H10"); // P4
 
         // Stage 3
-        performAttack("H10", "S10"); // P2 attack
-        performAttack("H10", "S10"); // P4 attack
+        performAttack("B15"); // P2
+        performAttack("B15"); // P3
+        performAttack("B15"); // P4
 
         // Stage 4
-        performAttack("S10", "B15"); // P2 attack
-        performAttack("S10", "B15"); // P4 attack
+        performAttack("L20"); // P2
+        performAttack("L20"); // P3
+        performAttack("L20"); // P4
 
-        // P1 hand trimming
-        handleHandTrim("F5", "F10", "F15", "F15");
+        // P1 discards and draws
+        handleHandTrim("F5", "F5", "F10", "F10");
 
         refreshGameState();
-        verifyPlayerStats("P2", 4, 9);
-        verifyPlayerStats("P4", 4, 9);
+        verifyPlayerStats("P2", 4, 11);
+        verifyPlayerStats("P3", 4, 11);
+        verifyPlayerStats("P4", 4, 11);
 
-        // Second Quest
+        // P2 draws Plague
         waitAndClick(By.id("draw-button"));
         waitForStateUpdate();
-        waitAndClick(By.xpath("//button[text()='Decline']"));
+        waitAndClick(By.xpath("//button[text()='Continue']"));
         waitForStateUpdate();
 
+        verifyPlayerStats("P2", 2, 11);
+
+        // P3 draws Prosperity
+        waitAndClick(By.id("draw-button"));
+        waitForStateUpdate();
+
+        // Handle discards for each player after prosperity
+        handleHandTrim("F5", "F10");    // P1
+        handleHandTrim("F5");           // P2
+        handleHandTrim("F5");           // P3
+        handleHandTrim("F20");          // P4
+
+        // P4 draws Queen's favor
+        waitAndClick(By.id("draw-button"));
+        waitForStateUpdate();
+        handleHandTrim("F25", "F30");
+
+        // Final Quest
+        waitAndClick(By.id("draw-button"));
+        waitForStateUpdate();
         waitAndClick(By.xpath("//button[text()='Accept']"));
         waitForStateUpdate();
 
-        sponsorQuest("F5");  // Stage 1
-        sponsorQuest("F5", "D5");  // Stage 2
-        sponsorQuest("F5", "H10");  // Stage 3
+        // P1 sponsors second quest stages
+        sponsorQuest("F15");                // Stage 1
+        sponsorQuest("F15", "D5");         // Stage 2
+        sponsorQuest("F20", "D5");         // Stage 3
+
+        // Stage 1 participation
+        waitAndClick(By.xpath("//button[text()='Join Quest']")); // P2
+        handleHandTrim("F5");
+        performAttack("B15");
+
+        waitAndClick(By.xpath("//button[text()='Join Quest']")); // P3
+        handleHandTrim("F10");
+        performAttack("B15");
 
         waitAndClick(By.xpath("//button[text()='Join Quest']")); // P4
-        performAttack("D5");
+        handleHandTrim("F20");
+        performAttack("H10");
 
-        waitAndClick(By.xpath("//button[text()='Decline']")); // P1
+        // Stage 2
+        performAttack("B15", "H10"); // P2
+        performAttack("B15", "S10"); // P3
+//        performAttack(); // P4 loses
 
-        waitAndClick(By.xpath("//button[text()='Join Quest']")); // P2
-        performAttack("D5");
+        // Stage 3
+        performAttack("L20", "S10"); // P2
+        performAttack("E30"); // P3
 
-        performAttack("B15"); // P4 stage 2
-        performAttack("B15"); // P2 stage 2
+        // P1 discards and draws
+//        handleHandTrim("F15", "F15", "F15");
 
-        performAttack("E30"); // P4 stage 3
-        performAttack("E30"); // P2 stage 3
-
+        // Verify final state
         refreshGameState();
-        waitForStateUpdate();
-
-        System.out.println("P3 hand size: " + game.getPlayers().get(2).getHand().size());
-
-        verifyPlayerStats("P1", 0, 12);
-        verifyPlayerStats("P2", 7, 9);
-        verifyPlayerStats("P3", 0, 7);
-        verifyPlayerStats("P4", 7, 9);
+        verifyPlayerStats("P1", 0, 7);
+        verifyPlayerStats("P2", 5, 9);
+        verifyPlayerStats("P3", 7, 10);
+        verifyPlayerStats("P4", 4, 11);
     }
-
 
     @After
     public void tearDown() {

@@ -17,10 +17,205 @@ import java.util.List;
 public class DeckService {
 
     private boolean testMode = false;
+    private String testScenario = "ONE_WINNER"; // Default test scenario
 
-//    public void setTestMode(boolean testMode) {
-//        this.isTestMode = testMode;
-//    }
+    // Method to create appropriate adventure deck based on test scenario
+    public Deck createAdventureDeck() {
+        if (testMode) {
+            System.out.println("Creating test deck for scenario: " + testScenario);
+            return switch (testScenario) {
+                case "TWO_WINNER" -> {
+                    System.out.println("We got into 2 winner instead of 1");
+                    yield create2WinnerAdventureDeck();
+                }
+                case "ONE_WINNER" -> {
+                    System.out.println("We got into 1 correctly");
+                    yield create1WinnerAdventureDeck();
+                }
+                case "ZERO_WINNER" ->{
+                    yield create0WinnerAdventureDeck();
+                }
+                default -> createNormalAdventureDeck();
+            };
+        }
+        return createNormalAdventureDeck();
+    }
+
+
+
+    // Method to create appropriate event deck based on test scenario
+    public Deck createEventDeck() {
+        if (testMode) {
+            System.out.println("Creating test event deck for scenario: " + testScenario);
+            return switch (testScenario) {
+                case "TWO_WINNER" -> {
+                    System.out.println("We got into 2 winner instead of 1");
+                    yield createTwoWinnerEventDeck();
+                }
+                case "ONE_WINNER" -> {
+                    System.out.println("We got into 1 correctly");
+                    yield createOneWinnerEventDeck();
+                }
+                case "ZERO_WINNER" -> {
+                    yield createZeroWinnerEventDeck();
+                }
+                default -> createNormalEventDeck();
+            };
+        }
+        return createNormalEventDeck();
+    }
+
+    // One Winner Adventure Deck
+    private Deck create1WinnerAdventureDeck() {
+        Deck deck = new Deck();
+        List<Card> orderedCards = new ArrayList<>();
+
+        // P1's initial hand
+        for (int i = 0; i < 2; i++) {
+            orderedCards.add(new AdventureCard("F5", CardType.FOE, 5));
+            orderedCards.add(new AdventureCard("F10", CardType.FOE, 10));
+            orderedCards.add(new AdventureCard("F15", CardType.FOE, 15));
+            orderedCards.add(new AdventureCard("F20", CardType.FOE, 20));
+        }
+        for (int i = 0; i < 4; i++) {
+            orderedCards.add(new AdventureCard("D5", CardType.WEAPON, 5));
+        }
+
+        // P2's initial hand
+        orderedCards.add(new AdventureCard("F25", CardType.FOE, 25));
+        orderedCards.add(new AdventureCard("F30", CardType.FOE, 30));
+        addWeaponSet(orderedCards, 2, 3, 2, 2, 1); // 2H, 3S, 2B, 2L, 1E
+
+        // P3's initial hand
+        orderedCards.add(new AdventureCard("F25", CardType.FOE, 25));
+        orderedCards.add(new AdventureCard("F30", CardType.FOE, 30));
+        addWeaponSet(orderedCards, 2, 3, 2, 2, 1); // 2H, 3S, 2B, 2L, 1E
+
+        // P4's initial hand
+        orderedCards.add(new AdventureCard("F25", CardType.FOE, 25));
+        orderedCards.add(new AdventureCard("F30", CardType.FOE, 30));
+        orderedCards.add(new AdventureCard("F70", CardType.FOE, 70));
+        addWeaponSet(orderedCards, 2, 3, 2, 2, 0); // 2H, 3S, 2B, 2L
+
+        // Cards to be drawn during quest stages
+        addQuestDrawCards(orderedCards);
+
+        // Add all cards to deck in reverse order
+        for (int i = orderedCards.size() - 1; i >= 0; i--) {
+            deck.addCard(orderedCards.get(i));
+        }
+
+        return deck;
+    }
+
+    // One Winner Event Deck
+    private Deck createOneWinnerEventDeck() {
+        Deck deck = new Deck();
+
+        // Add events in specific order
+        deck.addCard(new EventCard("Q3", EventType.QUEST));            // Final quest
+        deck.addCard(new EventCard("Queen's Favor", EventType.QUEENS_FAVOR));
+        deck.addCard(new EventCard("Prosperity", EventType.PROSPERITY));
+        deck.addCard(new EventCard("Plague", EventType.PLAGUE));
+        deck.addCard(new EventCard("Q4", EventType.QUEST));            // First quest
+
+        return deck;
+    }
+
+    // Helper methods for card creation
+    private void addWeaponSet(List<Card> cards, int horses, int swords, int axes, int lances, int excalibur) {
+        for (int i = 0; i < horses; i++) cards.add(new AdventureCard("H10", CardType.WEAPON, 10));
+        for (int i = 0; i < swords; i++) cards.add(new AdventureCard("S10", CardType.WEAPON, 10));
+        for (int i = 0; i < axes; i++) cards.add(new AdventureCard("B15", CardType.WEAPON, 15));
+        for (int i = 0; i < lances; i++) cards.add(new AdventureCard("L20", CardType.WEAPON, 20));
+        for (int i = 0; i < excalibur; i++) cards.add(new AdventureCard("E30", CardType.WEAPON, 30));
+    }
+
+    private void addQuestDrawCards(List<Card> cards) {
+        // First quest draws
+        cards.add(new AdventureCard("F5", CardType.FOE, 5));
+        cards.add(new AdventureCard("F10", CardType.FOE, 10));
+        cards.add(new AdventureCard("F20", CardType.FOE, 20));
+
+        //stage 2 draws
+        cards.add(new AdventureCard("F15", CardType.FOE, 15));
+        cards.add(new AdventureCard("F5", CardType.FOE, 5));
+        cards.add(new AdventureCard("F25", CardType.FOE, 25));
+
+        //stage 3
+        cards.add(new AdventureCard("F5", CardType.FOE, 5));
+        cards.add(new AdventureCard("F10", CardType.FOE, 10));
+        cards.add(new AdventureCard("F20", CardType.FOE, 20));
+
+        //stage 4
+        cards.add(new AdventureCard("F5", CardType.FOE, 5));
+        cards.add(new AdventureCard("F10", CardType.FOE, 10));
+        cards.add(new AdventureCard("F20", CardType.FOE, 20));
+
+
+        //P1 draws since he sponsored
+        cards.add(new AdventureCard("F5", CardType.FOE, 5));
+        cards.add(new AdventureCard("F5", CardType.FOE, 5));
+
+        cards.add(new AdventureCard("F10", CardType.FOE, 10));
+        cards.add(new AdventureCard("F10", CardType.FOE, 10));
+
+        cards.add(new AdventureCard("F15", CardType.FOE, 15));
+        cards.add(new AdventureCard("F15", CardType.FOE, 15));
+        cards.add(new AdventureCard("F15", CardType.FOE, 15));
+        cards.add(new AdventureCard("F15", CardType.FOE, 15));
+
+
+        // Prosperity draws
+        //P1
+        cards.add(new AdventureCard("F25", CardType.FOE, 25));
+        cards.add(new AdventureCard("F25", CardType.FOE, 25));
+        //P2
+        cards.add(new AdventureCard("H10", CardType.WEAPON, 10));
+        cards.add(new AdventureCard("S10", CardType.WEAPON, 10));
+        //P3
+        cards.add(new AdventureCard("B15", CardType.WEAPON, 15));
+        cards.add(new AdventureCard("F40", CardType.FOE, 40));
+        //P4
+        cards.add(new AdventureCard("D5", CardType.WEAPON, 5));
+        cards.add(new AdventureCard("D5", CardType.WEAPON, 5));
+
+        // Queen's favor draws
+        cards.add(new AdventureCard("F30", CardType.FOE, 30));
+        cards.add(new AdventureCard("F25", CardType.FOE, 25));
+
+
+        // Final quest draws
+        cards.add(new AdventureCard("B15", CardType.WEAPON, 15));
+        cards.add(new AdventureCard("H10", CardType.WEAPON, 10));
+        cards.add(new AdventureCard("F50", CardType.FOE, 50));
+
+        //stage 2
+        cards.add(new AdventureCard("S10", CardType.WEAPON, 10));
+        cards.add(new AdventureCard("S10", CardType.WEAPON, 10));
+
+
+        //stage 3
+        cards.add(new AdventureCard("F40", CardType.FOE, 40));
+        cards.add(new AdventureCard("F50", CardType.FOE, 50));
+
+        //final draw for P1 cus he sponsored the quest
+        cards.add(new AdventureCard("H10", CardType.WEAPON, 10));
+        cards.add(new AdventureCard("H10", CardType.WEAPON, 10));
+        cards.add(new AdventureCard("H10", CardType.WEAPON, 10));
+
+        cards.add(new AdventureCard("S10", CardType.WEAPON, 10));
+        cards.add(new AdventureCard("S10", CardType.WEAPON, 10));
+        cards.add(new AdventureCard("S10", CardType.WEAPON, 10));
+        cards.add(new AdventureCard("S10", CardType.WEAPON, 10));
+
+        cards.add(new AdventureCard("F35", CardType.FOE, 35));
+
+
+
+
+    }
+
 
     // Method to create a fresh adventure deck with all cards
     public Deck createNormalAdventureDeck() {
@@ -95,16 +290,6 @@ public class DeckService {
     public Deck createEmptyDeck() {
         return new Deck();
     }
-
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-                                //////Rigged Draws/////
 
 
     /////////////2Winner_quest////////////
@@ -233,7 +418,7 @@ public class DeckService {
         return deck;
     }
 
-    private Deck createTestEventDeck() {
+    private Deck createTwoWinnerEventDeck() {
         Deck deck = new Deck();
 
         // Add exact event cards in order
@@ -246,30 +431,33 @@ public class DeckService {
 
 
 
-    ///////////////////////1 winner quest////////////////
+    private Deck create0WinnerAdventureDeck() {
+        Deck deck = new Deck();
+        List<Card> orderedCards = new ArrayList<>();  // We'll add cards in exact order
+
+        //P1 initial hand
+        orderedCards.add(new AdventureCard("F50", CardType.FOE, 50));
+        orderedCards.add(new AdventureCard("F70", CardType.FOE, 70));
 
 
+        orderedCards.add(new AdventureCard("F70", CardType.FOE, 70));
 
 
-
-
-
-
-    public Deck createAdventureDeck() {
-        if (testMode) {
-            System.out.println("We used the test deck");
-            return create2WinnerAdventureDeck();
+        for (int i = orderedCards.size() - 1; i >= 0; i--) {
+            deck.addCard(orderedCards.get(i));
         }
-        return createNormalAdventureDeck();
-    }
-    public Deck createEventDeck() {
-        if (testMode) {
-            System.out.println("We used the test event deck");
-            return createTestEventDeck();
-        }
-        return createNormalEventDeck();
+
+
+        return deck;
     }
 
+
+    private Deck createZeroWinnerEventDeck() {
+        Deck deck = new Deck();
+        List<Card> orderedCards = new ArrayList<>();  // We'll add cards in exact order
+
+        return deck;
+    }
 
 
 }
