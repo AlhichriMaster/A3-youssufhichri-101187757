@@ -22,6 +22,8 @@ import org.example.model.Game;
 import selenium.config.TestConfig;
 
 import java.time.Duration;
+import java.util.List;
+
 import static org.junit.Assert.*;
 
 @RunWith(SpringRunner.class)
@@ -131,6 +133,20 @@ public class OneWinnerGameWithEventsTest {
         )).getText();
         assertTrue("Hand size mismatch for Player " + playerId,
                 handText.contains(expectedHandSize + " cards"));
+    }
+
+    private void verifyPlayerHand(String playerId, String... expectedCards) {
+        Player player = game.getPlayers().stream()
+                .filter(p -> p.getId().equals(playerId))
+                .findFirst()
+                .orElseThrow();
+
+        List<String> actualCardIds = player.getHand().stream()
+                .map(Card::getId)
+                .toList();
+
+        assertEquals("Hand content mismatch for Player " + playerId,
+                List.of(expectedCards), actualCardIds);
     }
 
     private void waitForStateUpdate() {
@@ -270,6 +286,11 @@ public class OneWinnerGameWithEventsTest {
         verifyPlayerStats("P2", 5, 9);
         verifyPlayerStats("P3", 7, 10);
         verifyPlayerStats("P4", 4, 11);
+
+        verifyPlayerHand("P1",  "F15", "F15", "F15","F25", "F25", "D5", "D5");
+        verifyPlayerHand("P2", "F15", "F25", "F30", "F40", "S10", "S10", "S10", "H10", "E30");
+        verifyPlayerHand("P3", "F10", "F25", "F30", "F40", "F50", "S10", "S10", "H10", "H10", "L20");
+        verifyPlayerHand("P4", "F25", "F25", "F30", "F50", "F70", "D5", "D5", "S10", "S10", "B15", "L20");
     }
 
     @After

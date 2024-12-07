@@ -204,6 +204,7 @@ public class a1Scenario {
 
         refreshGameState();
         verifyPlayerStats("P1", 0, 9);
+        verifyPlayerHand("P1", "F5", "F10", "F15", "F15", "F30", "H10", "B15", "B15", "L20");
 
         // Stage 3
         performAttack("L20", "H10", "S10"); // P3
@@ -221,6 +222,9 @@ public class a1Scenario {
         verifyPlayerStats("P2", 0, 12);
         verifyPlayerStats("P3", 0, 5);
         verifyPlayerStats("P4", 4, 4);
+
+        verifyPlayerHand("P3", "F5", "F5", "F15", "F30", "S10");
+        verifyPlayerHand("P4", "F15", "F15", "F40", "L20");
 
     }
 

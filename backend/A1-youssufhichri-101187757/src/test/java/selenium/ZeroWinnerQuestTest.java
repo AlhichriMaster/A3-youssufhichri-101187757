@@ -1,6 +1,7 @@
 package selenium;
 
 import org.example.Main;
+import org.example.model.Card;
 import org.example.model.Game;
 import org.example.model.Player;
 import org.example.service.DeckService;
@@ -21,6 +22,8 @@ import org.springframework.test.context.junit4.SpringRunner;
 import selenium.config.TestConfig;
 
 import java.time.Duration;
+import java.util.List;
+
 import static org.junit.Assert.*;
 
 @RunWith(SpringRunner.class)
@@ -29,7 +32,7 @@ import static org.junit.Assert.*;
         webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT
 )
 @ActiveProfiles({"test", "zero-winner-test"})
-public class zeroWinnerQuest {
+public class ZeroWinnerQuestTest {
     private WebDriver driver;
     private WebDriverWait wait;
 
@@ -143,6 +146,20 @@ public class zeroWinnerQuest {
                 handText.contains(expectedHandSize + " cards"));
     }
 
+    private void verifyPlayerHand(String playerId, String... expectedCards) {
+        Player player = game.getPlayers().stream()
+                .filter(p -> p.getId().equals(playerId))
+                .findFirst()
+                .orElseThrow();
+
+        List<String> actualCardIds = player.getHand().stream()
+                .map(Card::getId)
+                .toList();
+
+        assertEquals("Hand content mismatch for Player " + playerId,
+                List.of(expectedCards), actualCardIds);
+    }
+
     private void waitForStateUpdate() {
         try {
             Thread.sleep(500);
@@ -191,6 +208,12 @@ public class zeroWinnerQuest {
         verifyPlayerStats("P2", 0, 12);
         verifyPlayerStats("P3", 0, 12);
         verifyPlayerStats("P4", 0, 12);
+
+        verifyPlayerHand("P1", "F15", "D5", "D5", "D5", "D5", "S10", "S10", "S10", "H10", "H10", "H10", "H10");
+        verifyPlayerHand("P2", "F5", "F5", "F10", "F15", "F15", "F20", "F20", "F25", "F30", "F30", "F40", "E30");
+        verifyPlayerHand("P3", "F5", "F5", "F10", "F15", "F15", "F20", "F20", "F25", "F25", "F30", "F40", "L20");
+        verifyPlayerHand("P4", "F5", "F5", "F10", "F15", "F15", "F20", "F20", "F25", "F25", "F30", "F50", "E30");
+
     }
 
     @After

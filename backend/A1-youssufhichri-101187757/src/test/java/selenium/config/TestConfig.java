@@ -3,15 +3,17 @@ package selenium.config;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+//import org.springframework.boot.web.server.LocalServerPort;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.annotation.Profile;
 import org.example.service.DeckService;
 
 @TestConfiguration
 public class TestConfig {
 
-    // Remove the default configuration bean and create separate ones for each scenario
     @Bean
     @Primary
-    @org.springframework.context.annotation.Profile("two-winner-test")
+    @Profile("two-winner-test")
     public DeckService twoWinnerDeckService() {
         DeckService service = new DeckService();
         service.setTestMode(true);
@@ -21,7 +23,7 @@ public class TestConfig {
 
     @Bean
     @Primary
-    @org.springframework.context.annotation.Profile("one-winner-test")
+    @Profile("one-winner-test")
     public DeckService oneWinnerDeckService() {
         DeckService service = new DeckService();
         service.setTestMode(true);
@@ -31,8 +33,8 @@ public class TestConfig {
 
     @Bean
     @Primary
-    @org.springframework.context.annotation.Profile("zero-winner-test")
-    public DeckService zeroWinnerScenario() {
+    @Profile("zero-winner-test")
+    public DeckService zeroWinnerDeckService() {
         DeckService service = new DeckService();
         service.setTestMode(true);
         service.setTestScenario("ZERO_WINNER");
@@ -41,8 +43,8 @@ public class TestConfig {
 
     @Bean
     @Primary
-    @org.springframework.context.annotation.Profile("a1-scenario")
-    public DeckService a1Scenario() {
+    @Profile("a1-scenario")
+    public DeckService a1ScenarioDeckService() {
         DeckService service = new DeckService();
         service.setTestMode(true);
         service.setTestScenario("A1_SCENARIO");
