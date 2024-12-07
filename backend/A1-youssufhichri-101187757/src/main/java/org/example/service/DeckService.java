@@ -35,13 +35,14 @@ public class DeckService {
                 case "ZERO_WINNER" ->{
                     yield create0WinnerAdventureDeck();
                 }
+                case "A1_SCENARIO" ->{
+                    yield createA1ScenarioAdventureDeck();
+                }
                 default -> createNormalAdventureDeck();
             };
         }
         return createNormalAdventureDeck();
     }
-
-
 
     // Method to create appropriate event deck based on test scenario
     public Deck createEventDeck() {
@@ -58,6 +59,9 @@ public class DeckService {
                 }
                 case "ZERO_WINNER" -> {
                     yield createZeroWinnerEventDeck();
+                }
+                case "A1_SCENARIO" ->{
+                    yield createA1ScenarioEventDeck();
                 }
                 default -> createNormalEventDeck();
             };
@@ -433,31 +437,185 @@ public class DeckService {
 
     private Deck create0WinnerAdventureDeck() {
         Deck deck = new Deck();
-        List<Card> orderedCards = new ArrayList<>();  // We'll add cards in exact order
+        List<Card> orderedCards = new ArrayList<>();
 
-        //P1 initial hand
+        // P1's initial hand
         orderedCards.add(new AdventureCard("F50", CardType.FOE, 50));
         orderedCards.add(new AdventureCard("F70", CardType.FOE, 70));
+        orderedCards.add(new AdventureCard("D5", CardType.WEAPON, 5)); // dagger x2
+        orderedCards.add(new AdventureCard("D5", CardType.WEAPON, 5));
+        orderedCards.add(new AdventureCard("H10", CardType.WEAPON, 10)); // horse x2
+        orderedCards.add(new AdventureCard("H10", CardType.WEAPON, 10));
+        orderedCards.add(new AdventureCard("S10", CardType.WEAPON, 10)); // sword x2
+        orderedCards.add(new AdventureCard("S10", CardType.WEAPON, 10));
+        orderedCards.add(new AdventureCard("B15", CardType.WEAPON, 15)); // axe x2
+        orderedCards.add(new AdventureCard("B15", CardType.WEAPON, 15));
+        orderedCards.add(new AdventureCard("L20", CardType.WEAPON, 20)); // lance x2
+        orderedCards.add(new AdventureCard("L20", CardType.WEAPON, 20));
+
+        // P2's initial hand
+        for (int i = 0; i < 2; i++) orderedCards.add(new AdventureCard("F5", CardType.FOE, 5));
+        orderedCards.add(new AdventureCard("F10", CardType.FOE, 10));
+        for (int i = 0; i < 2; i++) orderedCards.add(new AdventureCard("F15", CardType.FOE, 15));
+        for (int i = 0; i < 2; i++) orderedCards.add(new AdventureCard("F20", CardType.FOE, 20));
+        orderedCards.add(new AdventureCard("F25", CardType.FOE, 25));
+        for (int i = 0; i < 2; i++) orderedCards.add(new AdventureCard("F30", CardType.FOE, 30));
+        orderedCards.add(new AdventureCard("F40", CardType.FOE, 40));
+        orderedCards.add(new AdventureCard("E30", CardType.WEAPON, 30)); // excalibur
+
+        // P3's initial hand - same pattern as P2 but with lance instead of excalibur
+        for (int i = 0; i < 2; i++) orderedCards.add(new AdventureCard("F5", CardType.FOE, 5));
+        orderedCards.add(new AdventureCard("F10", CardType.FOE, 10));
+        for (int i = 0; i < 2; i++) orderedCards.add(new AdventureCard("F15", CardType.FOE, 15));
+        for (int i = 0; i < 2; i++) orderedCards.add(new AdventureCard("F20", CardType.FOE, 20));
+        for (int i = 0; i < 2; i++) orderedCards.add(new AdventureCard("F25", CardType.FOE, 25));
+        orderedCards.add(new AdventureCard("F30", CardType.FOE, 30));
+        orderedCards.add(new AdventureCard("F40", CardType.FOE, 40));
+        orderedCards.add(new AdventureCard("L20", CardType.WEAPON, 20)); // lance
+
+        // P4's initial hand - similar pattern but with excalibur
+        for (int i = 0; i < 2; i++) orderedCards.add(new AdventureCard("F5", CardType.FOE, 5));
+        orderedCards.add(new AdventureCard("F10", CardType.FOE, 10));
+        for (int i = 0; i < 2; i++) orderedCards.add(new AdventureCard("F15", CardType.FOE, 15));
+        for (int i = 0; i < 2; i++) orderedCards.add(new AdventureCard("F20", CardType.FOE, 20));
+        for (int i = 0; i < 2; i++) orderedCards.add(new AdventureCard("F25", CardType.FOE, 25));
+        orderedCards.add(new AdventureCard("F30", CardType.FOE, 30));
+        orderedCards.add(new AdventureCard("F50", CardType.FOE, 50));
+        orderedCards.add(new AdventureCard("E30", CardType.WEAPON, 30)); // excalibur
 
 
-        orderedCards.add(new AdventureCard("F70", CardType.FOE, 70));
 
+        // Cards to be drawn during quest stages
+        //stage 1
+        orderedCards.add(new AdventureCard("F5", CardType.FOE, 5));   // P2 draws and discards
+        orderedCards.add(new AdventureCard("F15", CardType.FOE, 15)); // P3 draws and discards
+        orderedCards.add(new AdventureCard("F10", CardType.FOE, 10)); // P4 draws and discards
 
+        // P1's draw after quest
+        orderedCards.add(new AdventureCard("F5", CardType.FOE, 5));
+        orderedCards.add(new AdventureCard("F10", CardType.FOE, 10));
+        orderedCards.add(new AdventureCard("F15", CardType.FOE, 15));
+        for (int i = 0; i < 4; i++) orderedCards.add(new AdventureCard("D5", CardType.WEAPON, 5));
+        for (int i = 0; i < 4; i++) orderedCards.add(new AdventureCard("H10", CardType.WEAPON, 10));
+        for (int i = 0; i < 3; i++) orderedCards.add(new AdventureCard("S10", CardType.WEAPON, 10));
+
+        // Add all cards to deck in reverse order
         for (int i = orderedCards.size() - 1; i >= 0; i--) {
             deck.addCard(orderedCards.get(i));
         }
 
-
         return deck;
     }
-
 
     private Deck createZeroWinnerEventDeck() {
         Deck deck = new Deck();
-        List<Card> orderedCards = new ArrayList<>();  // We'll add cards in exact order
+
+        // Add events in specific order
+        deck.addCard(new EventCard("Q2", EventType.QUEST)); // 2-stage quest
 
         return deck;
     }
 
+
+    private Deck createA1ScenarioAdventureDeck() {
+        Deck deck = new Deck();
+        List<Card> orderedCards = new ArrayList<>();
+
+        // P1's initial hand (will be randomly dealt but we need these exact cards)
+        orderedCards.add(new AdventureCard("F5", CardType.FOE, 5));
+        orderedCards.add(new AdventureCard("F5", CardType.FOE, 5));
+        orderedCards.add(new AdventureCard("F15", CardType.FOE, 15));
+        orderedCards.add(new AdventureCard("F15", CardType.FOE, 15));
+        orderedCards.add(new AdventureCard("D5", CardType.WEAPON, 5));  // dagger
+        orderedCards.add(new AdventureCard("S10", CardType.WEAPON, 10)); // sword
+        orderedCards.add(new AdventureCard("S10", CardType.WEAPON, 10)); // sword
+        orderedCards.add(new AdventureCard("H10", CardType.WEAPON, 10)); // horse
+        orderedCards.add(new AdventureCard("H10", CardType.WEAPON, 10)); // horse
+        orderedCards.add(new AdventureCard("B15", CardType.WEAPON, 15)); // axe
+        orderedCards.add(new AdventureCard("B15", CardType.WEAPON, 15)); // axe
+        orderedCards.add(new AdventureCard("L20", CardType.WEAPON, 20)); // lance
+
+        // P2's initial hand
+        orderedCards.add(new AdventureCard("F5", CardType.FOE, 5));
+        orderedCards.add(new AdventureCard("F5", CardType.FOE, 5));
+        orderedCards.add(new AdventureCard("F15", CardType.FOE, 15));
+        orderedCards.add(new AdventureCard("F15", CardType.FOE, 15));
+        orderedCards.add(new AdventureCard("F40", CardType.FOE, 40));
+        orderedCards.add(new AdventureCard("D5", CardType.WEAPON, 5));  // dagger
+        orderedCards.add(new AdventureCard("S10", CardType.WEAPON, 10)); // sword
+        orderedCards.add(new AdventureCard("H10", CardType.WEAPON, 10)); // horse
+        orderedCards.add(new AdventureCard("H10", CardType.WEAPON, 10)); // horse
+        orderedCards.add(new AdventureCard("B15", CardType.WEAPON, 15)); // axe
+        orderedCards.add(new AdventureCard("B15", CardType.WEAPON, 15)); // axe
+        orderedCards.add(new AdventureCard("L20", CardType.WEAPON, 20)); // lance
+
+        // P3's initial hand
+        orderedCards.add(new AdventureCard("F5", CardType.FOE, 5));
+        orderedCards.add(new AdventureCard("F5", CardType.FOE, 5));
+        orderedCards.add(new AdventureCard("F5", CardType.FOE, 5));
+        orderedCards.add(new AdventureCard("F15", CardType.FOE, 15));
+        orderedCards.add(new AdventureCard("D5", CardType.WEAPON, 5));  // dagger
+        orderedCards.add(new AdventureCard("S10", CardType.WEAPON, 10)); // sword
+        orderedCards.add(new AdventureCard("S10", CardType.WEAPON, 10)); // sword
+        orderedCards.add(new AdventureCard("S10", CardType.WEAPON, 10)); // sword
+        orderedCards.add(new AdventureCard("H10", CardType.WEAPON, 10)); // horse
+        orderedCards.add(new AdventureCard("H10", CardType.WEAPON, 10)); // horse
+        orderedCards.add(new AdventureCard("B15", CardType.WEAPON, 15)); // axe
+        orderedCards.add(new AdventureCard("L20", CardType.WEAPON, 20)); // lance
+
+        // P4's initial hand
+        orderedCards.add(new AdventureCard("F5", CardType.FOE, 5));
+        orderedCards.add(new AdventureCard("F15", CardType.FOE, 15));
+        orderedCards.add(new AdventureCard("F15", CardType.FOE, 15));
+        orderedCards.add(new AdventureCard("F40", CardType.FOE, 40));
+        orderedCards.add(new AdventureCard("D5", CardType.WEAPON, 5));  // dagger
+        orderedCards.add(new AdventureCard("D5", CardType.WEAPON, 5));  // dagger
+        orderedCards.add(new AdventureCard("S10", CardType.WEAPON, 10)); // sword
+        orderedCards.add(new AdventureCard("H10", CardType.WEAPON, 10)); // horse
+        orderedCards.add(new AdventureCard("H10", CardType.WEAPON, 10)); // horse
+        orderedCards.add(new AdventureCard("B15", CardType.WEAPON, 15)); // axe
+        orderedCards.add(new AdventureCard("L20", CardType.WEAPON, 20)); // lance
+        orderedCards.add(new AdventureCard("E30", CardType.WEAPON, 30)); // excalibur
+
+        // Cards to be drawn during quest stages
+        // Stage 1 draws
+        orderedCards.add(new AdventureCard("S10", CardType.WEAPON, 10)); // P3 draws sword
+        orderedCards.add(new AdventureCard("B15", CardType.WEAPON, 15)); // P4 draws axe
+        orderedCards.add(new AdventureCard("F30", CardType.FOE, 30));   // P1 draws
+
+        // Stage 2 draws
+        orderedCards.add(new AdventureCard("L20", CardType.WEAPON, 20)); // P3 draws lance
+        orderedCards.add(new AdventureCard("L20", CardType.WEAPON, 20)); // P4 draws lance
+        orderedCards.add(new AdventureCard("F10", CardType.FOE, 10));   // P1 draws
+
+        // Stage 3 draws
+        orderedCards.add(new AdventureCard("B15", CardType.WEAPON, 15)); // P3 draws axe
+        orderedCards.add(new AdventureCard("S10", CardType.WEAPON, 10)); // P4 draws sword
+
+        // Stage 4 draws
+        orderedCards.add(new AdventureCard("F30", CardType.FOE, 30));   // P3 draws
+        orderedCards.add(new AdventureCard("L20", CardType.WEAPON, 20)); // P4 draws lance
+
+        // P2's random draw cards after sponsoring (13 cards)
+        for (int i = 0; i < 13; i++) {
+            orderedCards.add(new AdventureCard("F5", CardType.FOE, 5));
+        }
+
+        // Add all cards to deck in reverse order
+        for (int i = orderedCards.size() - 1; i >= 0; i--) {
+            deck.addCard(orderedCards.get(i));
+        }
+
+        return deck;
+    }
+
+    private Deck createA1ScenarioEventDeck() {
+        Deck deck = new Deck();
+
+        // Add exact event cards in order
+        deck.addCard(new EventCard("Q4", EventType.QUEST));    // 4-stage quest
+
+        return deck;
+    }
 
 }

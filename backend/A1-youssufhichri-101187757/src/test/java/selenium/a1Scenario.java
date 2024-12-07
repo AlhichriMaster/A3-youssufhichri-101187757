@@ -1,6 +1,7 @@
 package selenium;
 
 import org.example.Main;
+import org.example.model.Card;
 import org.example.model.Game;
 import org.example.model.Player;
 import org.example.service.DeckService;
@@ -21,6 +22,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 import selenium.config.TestConfig;
 
 import java.time.Duration;
+import java.util.List;
 import static org.junit.Assert.*;
 
 @RunWith(SpringRunner.class)
@@ -28,8 +30,8 @@ import static org.junit.Assert.*;
         classes = {Main.class, TestConfig.class},
         webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT
 )
-@ActiveProfiles({"test", "zero-winner-test"})
-public class zeroWinnerQuest {
+@ActiveProfiles({"test", "a1-scenario"})
+public class a1Scenario {
     private WebDriver driver;
     private WebDriverWait wait;
 
@@ -100,24 +102,11 @@ public class zeroWinnerQuest {
     }
 
     private void performAttack(String... weaponCards) {
-        if (weaponCards.length == 0) {
-            try {
-                waitAndClick(By.xpath("//button[text()='Withdraw']"));
-            } catch (Exception e) {
-                try {
-                    waitAndClick(By.xpath("//button[text()='Continue']"));
-                } catch (Exception ex) {
-                    System.out.println("Could not find withdrawal or continue button");
-                    throw ex;
-                }
-            }
-        } else {
-            for (String weaponCard : weaponCards) {
-                waitAndClick(By.xpath(
-                        "//div[contains(@class, 'card')]//h4[text()='" + weaponCard + "']/parent::div"));
-            }
-            waitAndClick(By.xpath("//button[text()='Confirm Attack']"));
+        for (String weaponCard : weaponCards) {
+            waitAndClick(By.xpath(
+                    "//div[contains(@class, 'card')]//h4[text()='" + weaponCard + "']/parent::div"));
         }
+        waitAndClick(By.xpath("//button[text()='Confirm Attack']"));
         waitForStateUpdate();
         refreshGameState();
     }
@@ -143,54 +132,96 @@ public class zeroWinnerQuest {
                 handText.contains(expectedHandSize + " cards"));
     }
 
+    private void verifyPlayerHand(String playerId, String... expectedCards) {
+        Player player = game.getPlayers().stream()
+                .filter(p -> p.getId().equals(playerId))
+                .findFirst()
+                .orElseThrow();
+
+        List<String> actualCardIds = player.getHand().stream()
+                .map(Card::getId)
+                .toList();
+
+        assertEquals("Hand content mismatch for Player " + playerId,
+                List.of(expectedCards), actualCardIds);
+    }
+
     private void waitForStateUpdate() {
         try {
-            Thread.sleep(500);
+            Thread.sleep(100);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
     }
 
     @Test
-    public void testZeroWinnerQuest() {
+    public void testA1Scenario() {
         // Initial state verification
         verifyPlayerStats("P1", 0, 12);
         verifyPlayerStats("P2", 0, 12);
         verifyPlayerStats("P3", 0, 12);
         verifyPlayerStats("P4", 0, 12);
 
-        // Draw and sponsor quest
+        // P1 draws quest and declines
         waitAndClick(By.id("draw-button"));
         waitForStateUpdate();
+        waitAndClick(By.xpath("//button[text()='Decline']"));
+        waitForStateUpdate();
+
+        // P2 sponsors quest
         waitAndClick(By.xpath("//button[text()='Accept']"));
         waitForStateUpdate();
 
-        // P1 sponsors quest stages
-        sponsorQuest("F50", "D5", "S10", "H10", "B15", "L20");  // Stage 1
-        sponsorQuest("F70", "D5", "S10", "H10", "B15", "L20");  // Stage 2
+        // P2 builds stages
+        sponsorQuest("F5", "H10");          // Stage 1
+        sponsorQuest("F15", "S10");         // Stage 2
+        sponsorQuest("F15", "D5", "B15");   // Stage 3
+        sponsorQuest("F40", "B15");         // Stage 4
+
 
         // Stage 1 participation
-        waitAndClick(By.xpath("//button[text()='Join Quest']")); // P2
-        handleHandTrim("F5");
-        performAttack("E30");
-
         waitAndClick(By.xpath("//button[text()='Join Quest']")); // P3
-        handleHandTrim("F15");
-        performAttack();
+        handleHandTrim("F5");
+        performAttack("S10", "D5");
 
         waitAndClick(By.xpath("//button[text()='Join Quest']")); // P4
-        handleHandTrim("F10");
-        performAttack();
+        handleHandTrim("F5");
+        performAttack("D5", "H10");
 
-        // P1 draws and discards after quest
-        handleHandTrim("F5", "F10");
+        waitAndClick(By.xpath("//button[text()='Join Quest']")); // P1
+        handleHandTrim("F5");
+        performAttack("D5", "S10");
 
-        // Verify final state
+
+        waitForStateUpdate();
+
+
+        // Stage 2 participation
+        performAttack("B15", "S10");//P3
+        performAttack("H10", "B15");//P4
+        performAttack("H10", "S10");//P1
+
+
         refreshGameState();
-        verifyPlayerStats("P1", 0, 12);
+        verifyPlayerStats("P1", 0, 9);
+
+        // Stage 3
+        performAttack("L20", "H10", "S10"); // P3
+        performAttack("B15", "S10", "L20"); // P4
+
+        // Stage 4
+        performAttack("B15", "H10", "L20"); // P3
+        performAttack("D5", "S10", "L20", "E30"); // P4
+
+        // P2 discards and draws
+        handleHandTrim("F5", "F5", "F5", "F5");
+
+
+        refreshGameState();
         verifyPlayerStats("P2", 0, 12);
-        verifyPlayerStats("P3", 0, 12);
-        verifyPlayerStats("P4", 0, 12);
+        verifyPlayerStats("P3", 0, 5);
+        verifyPlayerStats("P4", 4, 4);
+
     }
 
     @After

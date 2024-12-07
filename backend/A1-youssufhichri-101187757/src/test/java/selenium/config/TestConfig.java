@@ -38,4 +38,14 @@ public class TestConfig {
         service.setTestScenario("ZERO_WINNER");
         return service;
     }
+
+    @Bean
+    @Primary
+    @org.springframework.context.annotation.Profile("a1-scenario")
+    public DeckService a1Scenario() {
+        DeckService service = new DeckService();
+        service.setTestMode(true);
+        service.setTestScenario("A1_SCENARIO");
+        return service;
+    }
 }
